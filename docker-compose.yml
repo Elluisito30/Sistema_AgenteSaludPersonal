@@ -1,0 +1,117 @@
+# ============================================
+# DOCKER COMPOSE - HEALTH AI SYSTEM
+# ============================================
+
+version: '3.8'
+
+services:
+  # ============================================
+  # BACKEND - FastAPI
+  # ============================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: health-ai-backend
+    ports:
+      - "8000:8000"
+    dns:                          # ← AGREGAR ESTO
+      - 8.8.8.8                   # ← Google DNS
+      - 8.8.4.4                   # ← Google DNS alternativo
+    environment:
+      # Database - Local PostgreSQL
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=health_ai
+      - DB_USER=health_ai
+      - DB_PASSWORD=health_ai_pass
+      
+      # JWT Secret
+      - JWT_SECRET=68439d1d5eff6f5abf09e85b7f1cf5bbed73bd7ac3d513d3
+      
+      # n8n Webhook (usando n8n externo de Docker Desktop)
+      - N8N_WEBHOOK_URL=http://n8n:5678/webhook-test/health-assistant-DOCKER
+      - N8N_WEBHOOK_TEST_URL=http://n8n:5678/webhook-test/health-assistant-DOCKER
+      
+      # API Config
+      - API_PORT=8000
+      - API_HOST=0.0.0.0
+    volumes:
+      - ./backend.py:/app/backend.py
+      - ./.env:/app/.env
+    networks:
+      - health-ai-network
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # FRONTEND - React
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend-react
+      dockerfile: Dockerfile
+    container_name: health-ai-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - VITE_API_URL=http://backend:8000
+    volumes:
+      - ./frontend-react:/app
+      - /app/node_modules
+    networks:
+      - health-ai-network
+    depends_on:
+      backend:
+        condition: service_started
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+ 
+  # ============================================
+  # POSTGRESQL DATABASE
+  # ============================================
+  db:
+    image: postgres:15-alpine
+    container_name: health-ai-db
+    environment:
+      - POSTGRES_DB=health_ai
+      - POSTGRES_USER=health_ai
+      - POSTGRES_PASSWORD=health_ai_pass
+    # ports:
+    #   - "5432:5432"  # Opcional: descomentar para acceso externo
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - health-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "health_ai", "-d", "health_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  health-ai-network:
+    driver: bridge
+    name: health-ai-network
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  pgdata:
+    name: health-ai-pgdata

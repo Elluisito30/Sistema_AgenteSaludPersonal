@@ -1,0 +1,49 @@
+# Backend FastAPI
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+pydantic[email]==2.5.0
+
+# Database - Supabase
+psycopg2-binary==2.9.9
+supabase==2.3.0
+
+# Authentication
+pyjwt==2.8.0
+bcrypt==4.1.1
+
+# Frontend Streamlit
+streamlit==1.28.2
+
+# Data & Visualization
+pandas==2.1.3
+numpy==1.26.2
+plotly==5.18.0
+
+# HTTP Requests
+requests==2.31.0
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# ============================================
+# NUEVAS LIBRERÍAS PARA EXPORTACIÓN
+# ============================================
+
+# Excel Export
+xlsxwriter==3.1.9
+openpyxl==3.1.2
+
+# PDF Export
+reportlab==4.0.7
+pillow==10.1.0
+
+# Plotly export to images (for PDF/Word)
+kaleido==0.2.1
+python-docx==1.1.0
+
+# ============================================
+# ML (TensorFlow - opcional, comentado)
+# ============================================
+# tensorflow==2.15.0
+# scikit-learn==1.3.2
