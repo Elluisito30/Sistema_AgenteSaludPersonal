@@ -1,0 +1,9 @@
+{
+  "name": "1layer_adam_leaky_relu_dropout",
+  "hidden_units": [
+    128
+  ],
+  "optimizer": "adam",
+  "activation": "leaky_relu",
+  "regularization": "dropout"
+}

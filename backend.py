@@ -1083,267 +1083,239 @@ def test_n8n_connection():
 from fastapi.responses import StreamingResponse
 import io
 
-@app.get("/api/reports/health/pdf")
-def get_health_report_pdf(user_id: int = Depends(verify_token), language: str = "es"):
-    """Generar reporte de estado de salud en PDF"""
+# ==========================================
+# ENDPOINTS DE REPORTES — Refactorizados
+# Usa ReportEngine como capa unica de datos
+# ==========================================
+
+def _get_report_data(user_id, include_history=False, history_limit=10):
+    """Helper: obtiene datos del perfil, analisis, predicciones e historial."""
     with get_db_cursor(commit=False) as cursor:
         cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
         profile = convert_to_json_serializable(dict(cursor.fetchone()))
-        
+
         cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
         analysis = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT health_score, analyzed_at FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 5", (user_id,))
-        history = [convert_to_json_serializable(dict(row)) for row in cursor.fetchall()]
 
-    from advanced_reports import generate_risk_report_pdf
-    pdf_buffer = generate_risk_report_pdf(analysis, profile, history, None, language)
+        cursor.execute("SELECT * FROM health_predictions WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
+        pred_row = cursor.fetchone()
+        predictions = convert_to_json_serializable(dict(pred_row)) if pred_row else None
+
+        history = None
+        if include_history:
+            cursor.execute(
+                "SELECT health_score, analyzed_at, health_risk, bmi "
+                "FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT %s",
+                (user_id, history_limit),
+            )
+            history = [convert_to_json_serializable(dict(row)) for row in cursor.fetchall()]
+
+    from services.reports import ReportEngine
+    engine = ReportEngine()
+    return engine.build_from_db(profile, analysis, predictions, history)
+
+
+# ==========================================
+# HEALTH REPORTS
+# ==========================================
+
+@app.get("/api/reports/health/pdf")
+def get_health_report_pdf(user_id: int = Depends(verify_token), language: str = "es"):
+    """Generar reporte de estado de salud en PDF"""
+    report = _get_report_data(user_id, include_history=True, history_limit=5)
+
+    from services.reports import generate_health_pdf
+    pdf_buffer = generate_health_pdf(report, language=language)
     pdf_buffer.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(pdf_buffer.read()),
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=reporte_salud.pdf"}
     )
 
+
 @app.get("/api/reports/health/excel")
 def get_health_report_excel(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de estado de salud en Excel"""
-    with get_db_cursor(commit=False) as cursor:
-        cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
-        profile = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        analysis = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT health_score, analyzed_at, health_risk FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 10", (user_id,))
-        history = [convert_to_json_serializable(dict(row)) for row in cursor.fetchall()]
+    report = _get_report_data(user_id, include_history=True, history_limit=10)
 
-    from advanced_reports import generate_risk_report_excel
-    excel_buffer = generate_risk_report_excel(analysis, profile, history, language)
+    from services.reports import generate_health_excel
+    excel_buffer = generate_health_excel(report, language=language)
     excel_buffer.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(excel_buffer.read()),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=reporte_salud.xlsx"}
     )
 
+
 @app.get("/api/reports/health/word")
 def get_health_report_word(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de estado de salud en Word"""
-    with get_db_cursor(commit=False) as cursor:
-        cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
-        profile = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        analysis = convert_to_json_serializable(dict(cursor.fetchone()))
+    report = _get_report_data(user_id)
 
-    from advanced_reports import generate_risk_report_word
-    word_buffer = generate_risk_report_word(analysis, profile, None, language)
+    from services.reports import generate_health_word
+    word_buffer = generate_health_word(report, language=language)
     word_buffer.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(word_buffer.read()),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": "attachment; filename=reporte_salud.docx"}
     )
 
+
 # ==========================================
-# ENDPOINTS DE PREDICCIONES
+# PREDICTIONS REPORTS
 # ==========================================
+
 @app.get("/api/reports/predictions/pdf")
 def get_predictions_report_pdf(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de predicciones en PDF"""
-    with get_db_cursor(commit=False) as cursor:
-        cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
-        profile = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        analysis = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_predictions WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        prediction_row = cursor.fetchone()
-        latest_prediction = convert_to_json_serializable(dict(prediction_row)) if prediction_row else None
+    report = _get_report_data(user_id)
 
-    from advanced_reports import generate_predictions_report_pdf
-    pdf_buffer = generate_predictions_report_pdf(analysis, profile, latest_prediction, language)
+    from services.reports import generate_predictions_pdf
+    pdf_buffer = generate_predictions_pdf(report, language=language)
     pdf_buffer.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(pdf_buffer.read()),
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=reporte_predicciones.pdf"}
     )
 
+
 @app.get("/api/reports/predictions/excel")
 def get_predictions_report_excel(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de predicciones en Excel"""
-    with get_db_cursor(commit=False) as cursor:
-        cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
-        profile = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        analysis = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_predictions WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        prediction_row = cursor.fetchone()
-        latest_prediction = convert_to_json_serializable(dict(prediction_row)) if prediction_row else None
+    report = _get_report_data(user_id)
 
-    from advanced_reports import generate_predictions_report_excel
-    excel_buffer = generate_predictions_report_excel(analysis, profile, latest_prediction, language)
+    from services.reports import generate_predictions_excel
+    excel_buffer = generate_predictions_excel(report, language=language)
     excel_buffer.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(excel_buffer.read()),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=reporte_predicciones.xlsx"}
     )
 
+
 @app.get("/api/reports/predictions/word")
 def get_predictions_report_word(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de predicciones en Word"""
-    with get_db_cursor(commit=False) as cursor:
-        cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
-        profile = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        analysis = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_predictions WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        prediction_row = cursor.fetchone()
-        latest_prediction = convert_to_json_serializable(dict(prediction_row)) if prediction_row else None
+    report = _get_report_data(user_id)
 
-    from advanced_reports import generate_predictions_report_word
-    word_buffer = generate_predictions_report_word(analysis, profile, latest_prediction, language)
+    from services.reports import generate_predictions_word
+    word_buffer = generate_predictions_word(report, language=language)
     word_buffer.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(word_buffer.read()),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": "attachment; filename=reporte_predicciones.docx"}
     )
 
+
 # ==========================================
-# ENDPOINTS DE RECETAS
+# RECIPES (NUTRITION) REPORTS
 # ==========================================
+
 @app.get("/api/reports/recipes/pdf")
 def get_recipes_report_pdf(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de recetas en PDF"""
-    with get_db_cursor(commit=False) as cursor:
-        cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
-        profile = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        analysis = convert_to_json_serializable(dict(cursor.fetchone()))
+    report = _get_report_data(user_id)
 
-    from advanced_reports import generate_recipes_report_pdf
-    pdf_buffer = generate_recipes_report_pdf(analysis, profile, language)
+    from services.reports import generate_nutrition_pdf
+    pdf_buffer = generate_nutrition_pdf(report, language=language)
     pdf_buffer.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(pdf_buffer.read()),
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=reporte_recetas.pdf"}
     )
 
+
 @app.get("/api/reports/recipes/excel")
 def get_recipes_report_excel(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de recetas en Excel"""
-    with get_db_cursor(commit=False) as cursor:
-        cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
-        profile = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        analysis = convert_to_json_serializable(dict(cursor.fetchone()))
+    report = _get_report_data(user_id)
 
-    from advanced_reports import generate_recipes_report_excel
-    excel_buffer = generate_recipes_report_excel(analysis, profile, language)
+    from services.reports import generate_nutrition_excel
+    excel_buffer = generate_nutrition_excel(report, language=language)
     excel_buffer.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(excel_buffer.read()),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=reporte_recetas.xlsx"}
     )
 
+
 @app.get("/api/reports/recipes/word")
 def get_recipes_report_word(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de recetas en Word"""
-    with get_db_cursor(commit=False) as cursor:
-        cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
-        profile = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        analysis = convert_to_json_serializable(dict(cursor.fetchone()))
+    report = _get_report_data(user_id)
 
-    from advanced_reports import generate_recipes_report_word
-    word_buffer = generate_recipes_report_word(analysis, profile, language)
+    from services.reports import generate_nutrition_word
+    word_buffer = generate_nutrition_word(report, language=language)
     word_buffer.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(word_buffer.read()),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": "attachment; filename=reporte_recetas.docx"}
     )
 
+
 # ==========================================
-# ENDPOINTS DE EJERCICIO
+# EXERCISE REPORTS
 # ==========================================
+
 @app.get("/api/reports/exercise/pdf")
 def get_exercise_report_pdf(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de ejercicio en PDF"""
-    with get_db_cursor(commit=False) as cursor:
-        cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
-        profile = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        analysis = convert_to_json_serializable(dict(cursor.fetchone()))
+    report = _get_report_data(user_id)
 
-    from advanced_reports import generate_exercise_report_pdf
-    pdf_buffer = generate_exercise_report_pdf(analysis, profile, language)
+    from services.reports import generate_exercise_pdf
+    pdf_buffer = generate_exercise_pdf(report, language=language)
     pdf_buffer.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(pdf_buffer.read()),
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=reporte_ejercicio.pdf"}
     )
 
+
 @app.get("/api/reports/exercise/excel")
 def get_exercise_report_excel(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de ejercicio en Excel"""
-    with get_db_cursor(commit=False) as cursor:
-        cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
-        profile = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        analysis = convert_to_json_serializable(dict(cursor.fetchone()))
+    report = _get_report_data(user_id)
 
-    from advanced_reports import generate_exercise_report_excel
-    excel_buffer = generate_exercise_report_excel(analysis, profile, language)
+    from services.reports import generate_exercise_excel
+    excel_buffer = generate_exercise_excel(report, language=language)
     excel_buffer.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(excel_buffer.read()),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=reporte_ejercicio.xlsx"}
     )
 
+
 @app.get("/api/reports/exercise/word")
 def get_exercise_report_word(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de ejercicio en Word"""
-    with get_db_cursor(commit=False) as cursor:
-        cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
-        profile = convert_to_json_serializable(dict(cursor.fetchone()))
-        
-        cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        analysis = convert_to_json_serializable(dict(cursor.fetchone()))
+    report = _get_report_data(user_id)
 
-    from advanced_reports import generate_exercise_report_word
-    word_buffer = generate_exercise_report_word(analysis, profile, language)
+    from services.reports import generate_exercise_word
+    word_buffer = generate_exercise_word(report, language=language)
     word_buffer.seek(0)
-    
+
     return StreamingResponse(
         io.BytesIO(word_buffer.read()),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",

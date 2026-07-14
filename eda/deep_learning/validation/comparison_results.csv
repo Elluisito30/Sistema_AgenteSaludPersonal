@@ -1,0 +1,4 @@
+test,statistic,p_value,interpretation
+Wilcoxon signed-rank,1790.0,0.0,Significant difference (p < 0.05)
+McNemar,12.190476,0.00048034,Significant difference (p < 0.05)
+DeLong (bootstrap),-0.003788,,Significant ROC-AUC difference (CI excludes 0)
