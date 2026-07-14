@@ -36,6 +36,9 @@ services:
       # API Config
       - API_PORT=8000
       - API_HOST=0.0.0.0
+      
+      # Groq AI Chat (opcional)
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
     volumes:
       - ./backend.py:/app/backend.py
       - ./backend/services:/app/services

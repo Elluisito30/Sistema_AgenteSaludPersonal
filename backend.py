@@ -183,6 +183,13 @@ class DailyProgress(BaseModel):
     energy_level: Optional[int] = None
     notes: Optional[str] = None
 
+class ChatRequest(BaseModel):
+    message: str
+    language: str = "es"
+    analysis: Optional[Dict] = None
+    prediction: Optional[Dict] = None
+    xai: Optional[Dict] = None
+
 # ============================================
 # UTILIDADES
 # ============================================
@@ -1321,6 +1328,28 @@ def get_exercise_report_word(user_id: int = Depends(verify_token), language: str
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": "attachment; filename=reporte_ejercicio.docx"}
     )
+
+# ============================================
+# CHAT AI ENDPOINT
+# ============================================
+
+@app.post("/api/chat")
+def chat_with_ai(req: ChatRequest):
+    """Chat inteligente con IA usando Groq LLM"""
+    from services.chat_service import chat_service
+
+    if not req.message or not req.message.strip():
+        raise HTTPException(status_code=400, detail="Message is required")
+
+    result = chat_service.chat(
+        message=req.message.strip(),
+        language=req.language or "es",
+        analysis=req.analysis,
+        prediction=req.prediction,
+        xai=req.xai,
+    )
+
+    return result
 
 if __name__ == "__main__":
     import uvicorn

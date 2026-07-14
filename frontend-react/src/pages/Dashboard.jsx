@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApi } from '../hooks/useApi';
+import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+import ThemeToggle from '../components/ThemeToggle';
+import ExplainabilityCenter from '../components/ExplainabilityCenter';
+import HealthAssistant from '../components/HealthAssistant';
 import './Dashboard.css';
 
 function Dashboard() {
   const { token, user, logout } = useAuth();
   const { apiRequest } = useApi();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profile, setProfile] = useState(null);
   const [analysis, setAnalysis] = useState(null);
@@ -14,6 +20,7 @@ function Dashboard() {
   const [predictionsHistory, setPredictionsHistory] = useState(null);
   const [timelineData, setTimelineData] = useState(null);
   const [statsData, setStatsData] = useState(null);
+  const [importanceData, setImportanceData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [sleepHours, setSleepHours] = useState(7);
@@ -54,6 +61,8 @@ function Dashboard() {
       if (stats.success) {
         setStatsData(stats.data);
       }
+      const importance = await fetch('/eda/models/importance.json').then(r => r.ok ? r.json() : null).catch(() => null);
+      if (importance) setImportanceData(importance);
     } catch (e) {
       console.error('Error loading predictions:', e);
     }
@@ -88,7 +97,7 @@ function Dashboard() {
     const result = await apiRequest('/api/profile', 'POST', data, token);
     if (result.success) {
       setProfile(data);
-      setMessage({ type: 'success', text: '✅ Perfil actualizado correctamente' });
+      setMessage({ type: 'success', text: t('messages.profileSaved') });
       await analyzeHealth();
     } else {
       setMessage({ type: 'error', text: result.error });
@@ -99,13 +108,13 @@ function Dashboard() {
 
   const analyzeHealth = async () => {
     setLoading(true);
-    setMessage({ type: 'info', text: 'Analizando tu salud con IA...' });
+    setMessage({ type: 'info', text: t('messages.analyzing') });
 
     const result = await apiRequest('/api/analyze', 'POST', null, token);
 
     if (result.success) {
       setAnalysis(result.data);
-      setMessage({ type: 'success', text: '✅ Análisis completado con éxito' });
+      setMessage({ type: 'success', text: t('messages.analysisComplete') });
       await loadPredictions();
     } else {
       setMessage({ type: 'error', text: result.error });
@@ -121,9 +130,9 @@ function Dashboard() {
   };
 
   const getScoreText = (score) => {
-    if (score >= 80) return 'Excelente';
-    if (score >= 60) return 'Bueno';
-    return 'Mejorable';
+    if (score >= 80) return t('analysis.excellent');
+    if (score >= 60) return t('analysis.good');
+    return t('analysis.improvable');
   };
 
   const getScoreColorVar = (score) => {
@@ -227,7 +236,11 @@ function Dashboard() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="app-logo">
-            🏥 Health AI
+            🏥 {t('app.title')}
+          </div>
+          <div className="sidebar-controls">
+            <LanguageSwitcher />
+            <ThemeToggle />
           </div>
           <div className="user-card">
             <div className="user-avatar">{user?.full_name?.[0]?.toUpperCase() || 'U'}</div>
@@ -243,19 +256,19 @@ function Dashboard() {
             className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
           >
-            📊 Dashboard
+            📊 {t('nav.dashboard')}
           </button>
           <button
             className={`nav-item ${activeTab === 'nutrition' ? 'active' : ''}`}
             onClick={() => setActiveTab('nutrition')}
           >
-            🥗 Nutrición
+            🥗 {t('nav.nutrition')}
           </button>
           <button
             className={`nav-item ${activeTab === 'exercise' ? 'active' : ''}`}
             onClick={() => setActiveTab('exercise')}
           >
-            💪 Ejercicio
+            💪 {t('nav.exercise')}
           </button>
           <button
             className={`nav-item ${activeTab === 'predictions' ? 'active' : ''}`}
@@ -264,7 +277,16 @@ function Dashboard() {
               loadPredictions();
             }}
           >
-            📈 Predicciones
+            📈 {t('nav.predictions')}
+          </button>
+          <button
+            className={`nav-item ${activeTab === 'explainability' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('explainability');
+              loadPredictions();
+            }}
+          >
+            🔍 {t('nav.explainability')}
           </button>
           <button
             className={`nav-item ${activeTab === 'reports' ? 'active' : ''}`}
@@ -273,18 +295,18 @@ function Dashboard() {
               loadPredictions();
             }}
           >
-            📑 Reportes
+            📑 {t('nav.reports')}
           </button>
         </nav>
 
         <button className="btn-logout" onClick={logout}>
-          🚪 Cerrar Sesión
+          🚪 {t('nav.logout')}
         </button>
       </aside>
 
       <main className="main-content">
-        <h1 className="page-title">Tu Salud Personalizada</h1>
-        <p className="page-subtitle">Monitorea, analiza y mejora tu bienestar con inteligencia artificial</p>
+        <h1 className="page-title">{t('app.subtitle')}</h1>
+        <p className="page-subtitle">{t('app.description')}</p>
 
         {message && (
           <div className={`message ${message.type}`}>
@@ -300,12 +322,12 @@ function Dashboard() {
             <div className="analysis-grid">
               <div>
                 <div className="profile-section">
-                  <h3>📝 Mi Perfil</h3>
+                  <h3>📝 {t('profile.title')}</h3>
                   <form key={profile ? 'loaded' : 'new'} onSubmit={saveProfile} className="profile-form" id="profileForm">
-                    <div className="form-section-title">Datos Personales</div>
+                    <div className="form-section-title">{t('profile.personalData')}</div>
                     <div className="form-row">
                       <div className="form-group">
-                        <label>Edad</label>
+                        <label>{t('profile.age')}</label>
                         <input
                           type="number"
                           name="age"
@@ -316,7 +338,7 @@ function Dashboard() {
                         />
                       </div>
                       <div className="form-group">
-                        <label>Peso (kg)</label>
+                        <label>{t('profile.weight')}</label>
                         <input
                           type="number"
                           name="weight"
@@ -331,7 +353,7 @@ function Dashboard() {
 
                     <div className="form-row">
                       <div className="form-group">
-                        <label>Altura (cm)</label>
+                        <label>{t('profile.height')}</label>
                         <input
                           type="number"
                           name="height"
@@ -343,30 +365,30 @@ function Dashboard() {
                         />
                       </div>
                       <div className="form-group">
-                        <label>Género</label>
+                        <label>{t('profile.gender')}</label>
                         <select name="gender" defaultValue={profile?.gender || ''} required>
-                          <option value="" disabled>Elegir...</option>
-                          <option value="male">Hombre</option>
-                          <option value="female">Mujer</option>
+                          <option value="" disabled>{t('profile.choose')}</option>
+                          <option value="male">{t('profile.male')}</option>
+                          <option value="female">{t('profile.female')}</option>
                         </select>
                       </div>
                     </div>
 
-                    <div className="form-section-title">Estilo de Vida</div>
+                    <div className="form-section-title">{t('profile.lifestyle')}</div>
                     <div className="form-group">
-                      <label>Nivel de Actividad</label>
+                      <label>{t('profile.activityLevel')}</label>
                       <select name="activityLevel" defaultValue={profile?.activity_level || ''} required>
-                        <option value="" disabled>Elegir...</option>
-                        <option value="sedentary">Sedentario</option>
-                        <option value="light">Ligero</option>
-                        <option value="moderate">Moderado</option>
-                        <option value="active">Activo</option>
-                        <option value="very_active">Muy activo</option>
+                        <option value="" disabled>{t('profile.choose')}</option>
+                        <option value="sedentary">{t('profile.sedentary')}</option>
+                        <option value="light">{t('profile.light')}</option>
+                        <option value="moderate">{t('profile.moderate')}</option>
+                        <option value="active">{t('profile.active')}</option>
+                        <option value="very_active">{t('profile.veryActive')}</option>
                       </select>
                     </div>
 
                     <div className="form-group">
-                      <label>Horas de sueño: {sleepHours}</label>
+                      <label>{t('profile.sleepHours')}: {sleepHours}</label>
                       <input
                         type="range"
                         name="sleepHours"
@@ -378,18 +400,18 @@ function Dashboard() {
                     </div>
 
                     <div className="form-group">
-                      <label>Riesgo Genético Familiar</label>
+                      <label>{t('profile.geneticRisk')}</label>
                       <select name="geneticsRisk" defaultValue={profile?.genetics_risk || 'low'}>
-                        <option value="low">Bajo (Sin antecedentes graves)</option>
-                        <option value="medium">Medio (Algunos antecedentes leves)</option>
-                        <option value="high">Alto (Antecedentes directos graves)</option>
+                        <option value="low">{t('profile.geneticLow')}</option>
+                        <option value="medium">{t('profile.geneticMedium')}</option>
+                        <option value="high">{t('profile.geneticHigh')}</option>
                       </select>
                     </div>
 
-                    <div className="form-section-title">Salud</div>
+                    <div className="form-section-title">{t('profile.health')}</div>
                     <div className="form-check">
                       <input type="checkbox" name="smokes" defaultChecked={profile?.smokes} id="smokes" />
-                      <label htmlFor="smokes">Fumador</label>
+                      <label htmlFor="smokes">{t('profile.smoker')}</label>
                     </div>
 
                     <div className="form-check">
@@ -397,58 +419,58 @@ function Dashboard() {
                         const detailInput = document.getElementById('chronicDetailContainer');
                         if (detailInput) detailInput.style.display = e.target.checked ? 'block' : 'none';
                       }} />
-                      <label htmlFor="hasChronic">Condiciones crónicas</label>
+                      <label htmlFor="hasChronic">{t('profile.chronicConditions')}</label>
                     </div>
 
                     <div className="form-group" id="chronicDetailContainer" style={{ display: profile?.has_chronic_conditions ? 'block' : 'none', marginTop: '10px' }}>
-                      <label>Detalle de condiciones</label>
-                      <input type="text" name="chronicDetail" defaultValue={profile?.chronic_conditions_detail || ''} placeholder="Ej. Diabetes, Hipertensión..." />
+                      <label>{t('profile.chronicDetail')}</label>
+                      <input type="text" name="chronicDetail" defaultValue={profile?.chronic_conditions_detail || ''} placeholder={t('profile.chronicPlaceholder')} />
                     </div>
 
                     <div className="form-check">
                       <input type="checkbox" name="familyHistory" defaultChecked={profile?.family_history} id="familyHistory" />
-                      <label htmlFor="familyHistory">Antecedentes familiares de obesidad</label>
+                      <label htmlFor="familyHistory">{t('profile.familyHistory')}</label>
                     </div>
 
-                    <div className="form-section-title">Nutrición</div>
+                    <div className="form-section-title">{t('profile.nutritionSection')}</div>
                     <div className="form-group">
-                      <label>¿Consume frecuentemente comida chatarra? (FAVC)</label>
+                      <label>{t('profile.fastFood')}</label>
                       <select name="favc" defaultValue={profile?.favc || 'Sometimes'}>
-                        <option value="Always">Siempre</option>
-                        <option value="Frequently">Frecuentemente</option>
-                        <option value="Sometimes">A veces</option>
-                        <option value="No">No</option>
+                        <option value="Always">{t('profile.fastFoodAlways')}</option>
+                        <option value="Frequently">{t('profile.fastFoodFrequently')}</option>
+                        <option value="Sometimes">{t('profile.fastFoodSometimes')}</option>
+                        <option value="No">{t('profile.fastFoodNo')}</option>
                       </select>
                     </div>
 
                     <div className="form-group">
-                      <label>¿Cuántas veces come vegetales por comida? (FCVC)</label>
+                      <label>{t('profile.vegetables')}</label>
                       <select name="fcvc" defaultValue={profile?.fcvc || 2.0}>
-                        <option value="1">1 — Casi nunca</option>
-                        <option value="2">2 — A veces</option>
-                        <option value="3">3 — Siempre</option>
+                        <option value="1">{t('profile.veg1')}</option>
+                        <option value="2">{t('profile.veg2')}</option>
+                        <option value="3">{t('profile.veg3')}</option>
                       </select>
                     </div>
 
                     <div className="form-group">
-                      <label>Litros de agua diarios (CH2O)</label>
+                      <label>{t('profile.water')}</label>
                       <select name="ch2o" defaultValue={profile?.ch2o || 2.0}>
-                        <option value="1">Menos de 1L</option>
-                        <option value="2">1–2 Litros</option>
-                        <option value="3">Más de 2 Litros</option>
+                        <option value="1">{t('profile.water1')}</option>
+                        <option value="2">{t('profile.water2')}</option>
+                        <option value="3">{t('profile.water3')}</option>
                       </select>
                     </div>
 
-                    <div className="form-section-title">Objetivos</div>
+                    <div className="form-section-title">{t('profile.goalsSection')}</div>
                     <div className="form-group">
-                      <label>Objetivos de Salud</label>
+                      <label>{t('profile.healthGoals')}</label>
                       <select name="healthGoals" multiple defaultValue={profile?.health_goals || []} size="6" required>
-                        <option value="weight_loss">📉 Pérdida de peso</option>
-                        <option value="muscle_gain">💪 Ganancia muscular</option>
-                        <option value="better_sleep">😴 Mejor sueño</option>
-                        <option value="stress_reduction">🧘 Reducción estrés</option>
-                        <option value="energy_boost">⚡ Más energía</option>
-                        <option value="general_wellness">🌟 Bienestar general</option>
+                        <option value="weight_loss">{t('goals.weightLoss')}</option>
+                        <option value="muscle_gain">{t('goals.muscleGain')}</option>
+                        <option value="better_sleep">{t('goals.betterSleep')}</option>
+                        <option value="stress_reduction">{t('goals.stressReduction')}</option>
+                        <option value="energy_boost">{t('goals.energyBoost')}</option>
+                        <option value="general_wellness">{t('goals.generalWellness')}</option>
                       </select>
                     </div>
                   </form>
@@ -464,10 +486,10 @@ function Dashboard() {
                     {loading ? (
                       <>
                         <span className="btn-loading-spinner"></span>
-                        Analizando...
+                        {t('profile.analyzing')}
                       </>
                     ) : (
-                      '🤖 Analizar mi Salud'
+                      t('profile.analyze')
                     )}
                   </button>
                 </div>
@@ -479,11 +501,11 @@ function Dashboard() {
                     <div className="analysis-top-cards">
                       <div className={`analysis-card score ${getScoreBorderClass(analysis.health_score)}`}>
                         <div className="analysis-card-icon" title="Tu puntuación general de salud basada en todos los factores analizados">❤️</div>
-                        <div className="analysis-card-label">Health Score</div>
+                        <div className="analysis-card-label">{t('analysis.healthScore')}</div>
                         <div className="analysis-card-value tooltip-trigger" title="Puntuación de 0 a 100 que refleja tu estado general de salud. Más alto = mejor." style={{ color: getScoreColorVar(analysis.health_score) }}>
                           {analysis.health_score}<span className="score-value-suffix">/100</span>
                         </div>
-                        <div className="analysis-card-desc">Puntuación general de salud</div>
+                        <div className="analysis-card-desc">{t('analysis.healthScoreDesc')}</div>
                         <span className={`analysis-card-badge ${analysis.health_score < 60 ? 'warning' : analysis.health_score >= 80 ? '' : 'info'}`}>
                           {getScoreText(analysis.health_score)}
                         </span>
@@ -491,9 +513,9 @@ function Dashboard() {
 
                       <div className="analysis-card bmi">
                         <div className="analysis-card-icon" title="Índice de Masa Corporal — relación entre tu peso y tu estatura">⚖️</div>
-                        <div className="analysis-card-label">IMC</div>
+                        <div className="analysis-card-label">{t('analysis.bmi')}</div>
                         <div className="analysis-card-value tooltip-trigger" title={`IMC: ${analysis.bmi} — Categoría: ${analysis.bmi_category.replace('_', ' ')}. Valores normales: 18.5 – 24.9`}>{analysis.bmi}</div>
-                        <div className="analysis-card-desc">Índice de masa corporal</div>
+                        <div className="analysis-card-desc">{t('analysis.bmiDesc')}</div>
                         <span className={`analysis-card-badge ${analysis.bmi_category === 'normal' ? '' : analysis.bmi_category === 'obese' ? 'danger' : 'warning'}`}>
                           {analysis.bmi_category.replace('_', ' ')}
                         </span>
@@ -501,17 +523,17 @@ function Dashboard() {
 
                       <div className="analysis-card calories">
                         <div className="analysis-card-icon" title="Total de Energía Diaria Expendida — calorías que tu cuerpo necesita al día">🔥</div>
-                        <div className="analysis-card-label">Calorías Diarias</div>
+                        <div className="analysis-card-label">{t('analysis.dailyCalories')}</div>
                         <div className="analysis-card-value tooltip-trigger" title={`TDEE: ${analysis.tdee?.toFixed(0)} kcal/día. Calculado según tu nivel de actividad, peso, altura y objetivo.`}>{analysis.tdee?.toFixed(0)}</div>
-                        <div className="analysis-card-desc">kcal/día según tu objetivo</div>
+                        <div className="analysis-card-desc">{t('analysis.caloriesDesc')}</div>
                         <span className="analysis-card-badge info">TDEE</span>
                       </div>
                     </div>
 
                     <div className="analysis-panels">
                       <div className="analysis-panel alerts">
-                        <h3>🚨 Alertas</h3>
-                        <p className="analysis-panel-subtitle">Atención médica y recomendaciones urgentes</p>
+                        <h3>{t('analysis.alerts')}</h3>
+                        <p className="analysis-panel-subtitle">{t('analysis.alertsDesc')}</p>
                         <div className="analysis-panel-content">
                           {analysis.alerts && analysis.alerts.length > 0 ? (
                             analysis.alerts.map((alert, i) => (
@@ -520,21 +542,21 @@ function Dashboard() {
                               </p>
                             ))
                           ) : (
-                            <p>✅ No tienes alertas médicas críticas en este momento.</p>
+                            <p>{t('analysis.noAlerts')}</p>
                           )}
                         </div>
                       </div>
 
                       <div className="analysis-panel goals">
-                        <h3>🎯 Objetivos</h3>
-                        <p className="analysis-panel-subtitle">Metas semanales para mejorar tu bienestar</p>
+                        <h3>{t('analysis.weeklyGoals')}</h3>
+                        <p className="analysis-panel-subtitle">{t('analysis.weeklyGoalsDesc')}</p>
                         <div className="analysis-panel-content">
                           {analysis.weekly_goals && analysis.weekly_goals.length > 0 ? (
                             analysis.weekly_goals.map((goal, i) => (
                               <p key={i}>🎯 {goal}</p>
                             ))
                           ) : (
-                            <p>No hay objetivos asignados.</p>
+                            <p>{t('analysis.noGoals')}</p>
                           )}
                         </div>
                       </div>
@@ -542,14 +564,14 @@ function Dashboard() {
 
                     <div className="analysis-charts">
                       <div className="analysis-chart-card">
-                        <h3>Comparativa de Health Score</h3>
-                        <p className="analysis-chart-card-subtitle">Tu puntuación vs promedio poblacional</p>
+                        <h3>{t('analysis.scoreComparison')}</h3>
+                        <p className="analysis-chart-card-subtitle">{t('analysis.scoreComparisonSubtitle')}</p>
                         <Plot
                           data={[
                             {
                               type: 'bar',
-                              name: 'Tu Puntuación',
-                              x: ['Health Score'],
+                              name: t('analysis.yourScore'),
+                              x: [t('analysis.healthScore')],
                               y: [analysis.health_score],
                               marker: {
                                 color: getScoreColorVar(analysis.health_score)
@@ -557,26 +579,26 @@ function Dashboard() {
                             },
                             {
                               type: 'bar',
-                              name: 'Promedio Población',
-                              x: ['Health Score'],
+                              name: t('analysis.populationAvg'),
+                              x: [t('analysis.healthScore')],
                               y: [(profile?.age || 30) < 40 ? 75 : 65],
                               marker: { color: 'var(--info)' }
                             }
                           ]}
-                          layout={getChartLayout('Comparativa de Health Score', true)}
+                          layout={getChartLayout(t('analysis.scoreComparison'), true)}
                           style={{ width: '100%' }}
                         />
                       </div>
 
                       <div className="analysis-chart-card">
-                        <h3>Distribución de Macronutrientes</h3>
-                        <p className="analysis-chart-card-subtitle">Proporción diaria de proteínas, carbohidratos y grasas</p>
+                        <h3>{t('analysis.macronutrients')}</h3>
+                        <p className="analysis-chart-card-subtitle">{t('analysis.macroSubtitle')}</p>
                         {analysis.health_plan?.nutrition?.macronutrients ? (
                           <Plot
                             data={[
                               {
                                 type: 'pie',
-                                labels: ['Proteínas', 'Carbohidratos', 'Grasas'],
+                                labels: [t('analysis.protein'), t('analysis.carbs'), t('analysis.fats')],
                                 values: [
                                   analysis.health_plan.nutrition.macronutrients.protein,
                                   analysis.health_plan.nutrition.macronutrients.carbs,
@@ -592,12 +614,12 @@ function Dashboard() {
                                 }
                               }
                             ]}
-                            layout={getChartLayout('Distribución de Macronutrientes', false, true)}
+                            layout={getChartLayout(t('analysis.macronutrients'), false, true)}
                             style={{ width: '100%' }}
                           />
                         ) : (
                           <p className="analysis-no-data-msg">
-                            No hay datos de macronutrientes disponibles.
+                            {t('analysis.noMacroData')}
                           </p>
                         )}
                       </div>
@@ -607,8 +629,8 @@ function Dashboard() {
                 ) : (
                   <div className="empty-state">
                     <div className="empty-state-icon">📋</div>
-                    <h3>Analiza tu salud para empezar</h3>
-                    <p>Completa tu perfil y haz clic en "Analizar mi Salud" para obtener recomendaciones personalizadas</p>
+                    <h3>{t('analysis.emptyTitle')}</h3>
+                    <p>{t('analysis.emptyDesc')}</p>
                   </div>
                 )}
               </div>
@@ -623,23 +645,23 @@ function Dashboard() {
                 <div className="metrics-grid metrics-grid-spaced">
                   <div className="metric-card" title="Calorías recomendadas diarias para tu objetivo actual">
                     <div className="metric-icon">🔥</div>
-                    <div className="metric-label">Calorías Diarias</div>
+                    <div className="metric-label">{t('nutrition.dailyCalories')}</div>
                     <div className="metric-value">{analysis.health_plan.nutrition.daily_calories}</div>
                     <div className="metric-desc">kcal</div>
                   </div>
                   <div className="metric-card" title={`Proteínas: ${analysis.health_plan.nutrition.macronutrients.protein}g — esenciales para músculo y recuperación`}>
                     <div className="metric-icon">🥩</div>
-                    <div className="metric-label">Proteínas</div>
+                    <div className="metric-label">{t('nutrition.protein')}</div>
                     <div className="metric-value">{analysis.health_plan.nutrition.macronutrients.protein}g</div>
                   </div>
                   <div className="metric-card" title={`Carbohidratos: ${analysis.health_plan.nutrition.macronutrients.carbs}g — principal fuente de energía`}>
                     <div className="metric-icon">🍚</div>
-                    <div className="metric-label">Carbohidratos</div>
+                    <div className="metric-label">{t('nutrition.carbs')}</div>
                     <div className="metric-value">{analysis.health_plan.nutrition.macronutrients.carbs}g</div>
                   </div>
                   <div className="metric-card" title={`Grasas: ${analysis.health_plan.nutrition.macronutrients.fats}g — necesarias para hormonas y absorción de vitaminas`}>
                     <div className="metric-icon">🥑</div>
-                    <div className="metric-label">Grasas</div>
+                    <div className="metric-label">{t('nutrition.fats')}</div>
                     <div className="metric-value">{analysis.health_plan.nutrition.macronutrients.fats}g</div>
                   </div>
                 </div>
@@ -650,7 +672,7 @@ function Dashboard() {
                       data={[
                         {
                           type: 'pie',
-                          labels: ['Proteínas', 'Carbohidratos', 'Grasas'],
+                          labels: [t('nutrition.protein'), t('nutrition.carbs'), t('nutrition.fats')],
                           values: [
                             analysis.health_plan.nutrition.macronutrients.protein,
                             analysis.health_plan.nutrition.macronutrients.carbs,
@@ -666,13 +688,13 @@ function Dashboard() {
                           }
                         }
                       ]}
-                      layout={getChartLayout('Distribución de Macronutrientes', false, true)}
+                      layout={getChartLayout(t('nutrition.distribution'), false, true)}
                       style={{ width: '100%' }}
                     />
                   </div>
 
                   <div className="card">
-                    <h3>💡 Recomendaciones</h3>
+                    <h3>{t('nutrition.recommendations')}</h3>
                     {analysis.health_plan.nutrition.recommendations?.map((rec, i) => (
                       <div key={i} className="goal-item">✅ {rec}</div>
                     ))}
@@ -682,8 +704,8 @@ function Dashboard() {
             ) : (
               <div className="empty-state">
                 <div className="empty-state-icon">🍽️</div>
-                <h3>Plan de Nutrición</h3>
-                <p>Realiza un análisis de salud primero para obtener tu plan personalizado</p>
+                <h3>{t('nutrition.emptyTitle')}</h3>
+                <p>{t('nutrition.emptyDesc')}</p>
               </div>
             )}
           </div>
@@ -699,36 +721,36 @@ function Dashboard() {
                       {analysis.fitness_level === 'beginner' ? '🌱' :
                         analysis.fitness_level === 'advanced' ? '🏆' : '💪'}
                     </div>
-                    <div className="metric-label">Tu Nivel</div>
+                    <div className="metric-label">{t('exercise.yourLevel')}</div>
                     <div className="metric-value">{analysis.fitness_level}</div>
                   </div>
 
                   <div className="metrics-grid">
-                    <div className="metric-card" title="Actividades cardiovasculares recomendadas para tu nivel">
+                    <div className="metric-card" title={t('exercise.cardioTooltip')}>
                       <div className="metric-icon">🏃</div>
-                      <div className="metric-label">Cardio</div>
+                      <div className="metric-label">{t('exercise.cardio')}</div>
                       <div className="metric-value">{analysis.health_plan.exercise.cardio}</div>
                     </div>
-                    <div className="metric-card" title="Ejercicios de fuerza y tonificación muscular">
+                    <div className="metric-card" title={t('exercise.strengthTooltip')}>
                       <div className="metric-icon">🏋️</div>
-                      <div className="metric-label">Fuerza</div>
+                      <div className="metric-label">{t('exercise.strength')}</div>
                       <div className="metric-value">{analysis.health_plan.exercise.strength}</div>
                     </div>
-                    <div className="metric-card" title="Rutinas de estiramientos y flexibilidad">
+                    <div className="metric-card" title={t('exercise.flexTooltip')}>
                       <div className="metric-icon">🧘</div>
-                      <div className="metric-label">Flexibilidad</div>
+                      <div className="metric-label">{t('exercise.flexibility')}</div>
                       <div className="metric-value">{analysis.health_plan.exercise.flexibility}</div>
                     </div>
                   </div>
                 </div>
 
                 <div className="card">
-                  <h3>🗓️ Plan Semanal</h3>
+                  <h3>{t('exercise.weeklyPlan')}</h3>
                   <div className="exercise-chart-container">
                     <Plot
                       data={[
                         {
-                          x: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'],
+                          x: [t('days.mon'), t('days.tue'), t('days.wed'), t('days.thu'), t('days.fri'), t('days.sat'), t('days.sun')],
                           y: [30, 45, 20, 60, 30, 45, 0],
                           type: 'bar',
                           marker: {
@@ -736,7 +758,7 @@ function Dashboard() {
                           }
                         }
                       ]}
-                      layout={getChartLayout('Rutina Semanal Recomendada', true)}
+                      layout={getChartLayout(t('exercise.weeklyRoutine'), true)}
                       style={{ width: '100%' }}
                     />
                   </div>
@@ -745,8 +767,8 @@ function Dashboard() {
             ) : (
               <div className="empty-state">
                 <div className="empty-state-icon">💪</div>
-                <h3>Plan de Ejercicio</h3>
-                <p>Realiza un análisis de salud primero para obtener tu rutina personalizada</p>
+                <h3>{t('exercise.emptyTitle')}</h3>
+                <p>{t('exercise.emptyDesc')}</p>
               </div>
             )}
           </div>
@@ -756,9 +778,99 @@ function Dashboard() {
           <div className="tab-content">
             {analysis ? (
               <div>
+                <div className="reports-summaries">
+                  <div className="report-summary-card">
+                    <h3>📋 {t('reports.executiveSummary')}</h3>
+                    <div className="summary-metrics">
+                      <div className="summary-metric">
+                        <span className="summary-label">{t('analysis.healthScore')}</span>
+                        <span className="summary-value" style={{ color: getScoreColorVar(analysis.health_score) }}>{analysis.health_score}/100</span>
+                      </div>
+                      <div className="summary-metric">
+                        <span className="summary-label">{t('analysis.bmi')}</span>
+                        <span className="summary-value">{analysis.bmi}</span>
+                      </div>
+                      <div className="summary-metric">
+                        <span className="summary-label">{t('analysis.tdee')}</span>
+                        <span className="summary-value">{analysis.tdee?.toFixed(0)} kcal</span>
+                      </div>
+                    </div>
+                    {analysis.alerts?.length > 0 && (
+                      <div className="summary-alerts">
+                        <strong>{t('reports.riskFactors')}:</strong>
+                        <ul>
+                          {analysis.alerts.slice(0, 3).map((alert, i) => (
+                            <li key={i}>{alert.message || alert}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {analysis.weekly_goals?.length > 0 && (
+                      <div className="summary-goals">
+                        <strong>{t('reports.improvements')}:</strong>
+                        <ul>
+                          {analysis.weekly_goals.slice(0, 3).map((goal, i) => (
+                            <li key={i}>{goal}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="report-summary-card">
+                    <h3>⚕️ {t('reports.clinicalSummary')}</h3>
+                    <div className="summary-metrics">
+                      <div className="summary-metric">
+                        <span className="summary-label">{t('analysis.bmi')}</span>
+                        <span className="summary-value">{analysis.bmi} — {analysis.bmi_category?.replace('_', ' ')}</span>
+                      </div>
+                      <div className="summary-metric">
+                        <span className="summary-label">{t('analysis.dailyCalories')}</span>
+                        <span className="summary-value">{analysis.health_plan?.nutrition?.daily_calories || 'N/A'} kcal</span>
+                      </div>
+                    </div>
+                    {analysis.health_plan?.nutrition?.recommendations?.length > 0 && (
+                      <div className="summary-recommendations">
+                        <strong>{t('reports.improvements')}:</strong>
+                        <ul>
+                          {analysis.health_plan.nutrition.recommendations.slice(0, 3).map((rec, i) => (
+                            <li key={i}>{rec}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="report-summary-card report-summary-ai">
+                    <h3>🤖 {t('reports.aiSummary')}</h3>
+                    {analysis.xai ? (
+                      <div className="ai-summary-content">
+                        <p className="ai-summary-main-reason"><strong>{t('xai.mainReason')}:</strong> {analysis.xai.main_reason}</p>
+                        <p className="ai-summary-risk">{analysis.xai.risk_explanation}</p>
+                        {analysis.ml_prediction && (
+                          <div className="ai-summary-ml">
+                            <span className="ml-badge">{analysis.ml_prediction.model_used}</span>
+                            <span className="ml-confidence-inline">{t('predictions.confidence')}: {analysis.ml_prediction.confidence?.toFixed(1)}%</span>
+                          </div>
+                        )}
+                        {analysis.xai.important_features?.length > 0 && (
+                          <div className="ai-summary-features">
+                            <strong>{t('xai.importantFeatures')}:</strong>
+                            {analysis.xai.important_features.slice(0, 4).map((feat, i) => (
+                              <span key={i} className="ai-feature-tag">{feat.display_name}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p style={{ color: 'var(--text-secondary)' }}>{t('explainability.noData')}</p>
+                    )}
+                  </div>
+                </div>
+
                 <div className="reports-header">
                   <div className="reports-header-inner">
-                    <label htmlFor="language-select">Idioma del Reporte:</label>
+                    <label htmlFor="language-select">{t('reports.language')}</label>
                     <select
                       id="language-select"
                       value={reportLanguage}
@@ -773,8 +885,8 @@ function Dashboard() {
                 <div className="grid-2">
                   <div className="report-card">
                     <div className="report-card-header">
-                      <h3>🏥 Estado General de Salud</h3>
-                      <p>Resumen clínico completo para compartir con tu médico.</p>
+                      <h3>{t('reports.healthReport')}</h3>
+                      <p>{t('reports.healthReportDesc')}</p>
                     </div>
                     <div className="report-card-buttons">
                       <button
@@ -800,8 +912,8 @@ function Dashboard() {
 
                   <div className="report-card">
                     <div className="report-card-header">
-                      <h3>📊 Resumen de Predicciones</h3>
-                      <p>Progreso de peso y predicciones a 6 meses.</p>
+                      <h3>{t('reports.predictionsReport')}</h3>
+                      <p>{t('reports.predictionsReportDesc')}</p>
                     </div>
                     <div className="report-card-buttons">
                       <button
@@ -827,8 +939,8 @@ function Dashboard() {
 
                   <div className="report-card">
                     <div className="report-card-header">
-                      <h3>🥗 Recetas Sugeridas</h3>
-                      <p>Plan de alimentación personalizado.</p>
+                      <h3>{t('reports.recipesReport')}</h3>
+                      <p>{t('reports.recipesReportDesc')}</p>
                     </div>
                     <div className="report-card-buttons">
                       <button
@@ -854,8 +966,8 @@ function Dashboard() {
 
                   <div className="report-card">
                     <div className="report-card-header">
-                      <h3>💪 Plan de Ejercicio</h3>
-                      <p>Rutina adaptada a tu nivel de actividad.</p>
+                      <h3>{t('reports.exerciseReport')}</h3>
+                      <p>{t('reports.exerciseReportDesc')}</p>
                     </div>
                     <div className="report-card-buttons">
                       <button
@@ -884,7 +996,7 @@ function Dashboard() {
               <div className="empty-state">
                 <div className="empty-state-icon">📑</div>
                 <h3>Reportes</h3>
-                <p>Realiza un análisis de salud primero para generar tus reportes personalizados</p>
+                <p>{t('reports.noAnalysis')}</p>
               </div>
             )}
           </div>
@@ -895,7 +1007,7 @@ function Dashboard() {
             {loading ? (
               <div className="empty-state">
                 <div className="empty-state-icon small">⏳</div>
-                <h3>Cargando predicciones...</h3>
+                <h3>{t('predictions.loading')}</h3>
               </div>
             ) : (() => {
               const predData = latestPrediction || (analysis && analysis.predictions ? {
@@ -912,16 +1024,16 @@ function Dashboard() {
                     <div className="ml-prediction-card">
                       <div className="ml-prediction-header">
                         <span className="ml-prediction-icon">🤖</span>
-                        <h3>Clasificación ML (XGBoost)</h3>
+                        <h3>{t('predictions.mlPrediction')}</h3>
                       </div>
                       <div className="ml-prediction-body">
                         <div className="ml-prediction-main">
                           <div className="ml-predicted-class">
-                            <span className="ml-label">Categoría Predicha</span>
+                            <span className="ml-label">{t('predictions.predictedClass')}</span>
                             <span className="ml-value">{analysis.ml_prediction.predicted_class.replace(/_/g, ' ')}</span>
                           </div>
                           <div className="ml-confidence">
-                            <span className="ml-label">Confianza</span>
+                            <span className="ml-label">{t('predictions.confidence')}</span>
                             <div className="ml-confidence-bar-container">
                               <div className="ml-confidence-bar" style={{ width: `${analysis.ml_prediction.confidence}%` }}></div>
                             </div>
@@ -938,11 +1050,10 @@ function Dashboard() {
 
                   {analysis?.xai && (
                     <div className="xai-section">
-                      {/* ¿Por qué la IA tomó esta decisión? */}
                       <div className="xai-card xai-card-explanation">
                         <div className="xai-card-header">
                           <span className="xai-card-icon">💡</span>
-                          <h3>¿Por qué la IA tomó esta decisión?</h3>
+                          <h3>{t('xai.title')}</h3>
                         </div>
                         <div className="xai-card-body">
                           <p className="xai-summary">{analysis.xai.summary}</p>
@@ -950,11 +1061,10 @@ function Dashboard() {
                         </div>
                       </div>
 
-                      {/* Nivel de confianza */}
                       <div className="xai-card xai-card-confidence">
                         <div className="xai-card-header">
                           <span className="xai-card-icon">🎯</span>
-                          <h3>Nivel de Confianza</h3>
+                          <h3>{t('xai.confidenceLevel')}</h3>
                         </div>
                         <div className="xai-card-body">
                           <p className="xai-confidence-text">{analysis.xai.confidence_text}</p>
@@ -980,12 +1090,11 @@ function Dashboard() {
                         </div>
                       </div>
 
-                      {/* Factores más importantes */}
                       {analysis.xai.important_features?.length > 0 && (
                         <div className="xai-card xai-card-features">
                           <div className="xai-card-header">
                             <span className="xai-card-icon">📊</span>
-                            <h3>Factores Más Importantes</h3>
+                            <h3>{t('xai.importantFeatures')}</h3>
                           </div>
                           <div className="xai-card-body">
                             {analysis.xai.important_features.map((feat, i) => (
@@ -998,7 +1107,7 @@ function Dashboard() {
                                   />
                                 </div>
                                 <span className={`xai-feature-badge xai-feature-${feat.level}`}>
-                                  {feat.level === 'high' ? 'Alto' : feat.level === 'medium' ? 'Medio' : 'Bajo'}
+                                  {feat.level === 'high' ? t('xai.high') : feat.level === 'medium' ? t('xai.medium') : t('xai.low')}
                                 </span>
                               </div>
                             ))}
@@ -1006,17 +1115,16 @@ function Dashboard() {
                         </div>
                       )}
 
-                      {/* Interpretación clínica */}
                       <div className="xai-card xai-card-clinical">
                         <div className="xai-card-header">
                           <span className="xai-card-icon">🩺</span>
-                          <h3>Interpretación Clínica</h3>
+                          <h3>{t('xai.clinicalInterpretation')}</h3>
                         </div>
                         <div className="xai-card-body">
                           <p>{analysis.xai.risk_explanation}</p>
                           {analysis.xai.recommendations?.length > 0 && (
                             <div className="xai-recommendations">
-                              <strong>Recomendaciones:</strong>
+                              <strong>{t('xai.recommendations')}</strong>
                               <ul>
                                 {analysis.xai.recommendations.map((rec, i) => (
                                   <li key={i}>{rec}</li>
@@ -1027,7 +1135,6 @@ function Dashboard() {
                         </div>
                       </div>
 
-                      {/* Escenarios futuros */}
                       <div className="xai-scenarios-grid">
                         {analysis.xai.scenario_follow && (
                           <div className="xai-card xai-card-scenario xai-card-follow">
@@ -1038,15 +1145,15 @@ function Dashboard() {
                             <div className="xai-card-body">
                               <div className="xai-scenario-metrics">
                                 <div className="xai-scenario-metric">
-                                  <span className="xai-scenario-label">Peso proyectado</span>
+                                  <span className="xai-scenario-label">{t('xai.projectedWeight')}</span>
                                   <span className="xai-scenario-value">{analysis.xai.scenario_follow.projected_weight_kg} kg</span>
                                 </div>
                                 <div className="xai-scenario-metric">
-                                  <span className="xai-scenario-label">IMC proyectado</span>
+                                  <span className="xai-scenario-label">{t('xai.projectedBMI')}</span>
                                   <span className="xai-scenario-value">{analysis.xai.scenario_follow.projected_bmi}</span>
                                 </div>
                                 <div className="xai-scenario-metric">
-                                  <span className="xai-scenario-label">Categoría esperada</span>
+                                  <span className="xai-scenario-label">{t('xai.expectedCategory')}</span>
                                   <span className="xai-scenario-value">{analysis.xai.scenario_follow.projected_category}</span>
                                 </div>
                               </div>
@@ -1064,15 +1171,15 @@ function Dashboard() {
                             <div className="xai-card-body">
                               <div className="xai-scenario-metrics">
                                 <div className="xai-scenario-metric">
-                                  <span className="xai-scenario-label">Peso estimado</span>
+                                  <span className="xai-scenario-label">{t('xai.estimatedWeight')}</span>
                                   <span className="xai-scenario-value">{analysis.xai.scenario_ignore.projected_weight_kg} kg</span>
                                 </div>
                                 <div className="xai-scenario-metric">
-                                  <span className="xai-scenario-label">IMC estimado</span>
+                                  <span className="xai-scenario-label">{t('xai.estimatedBMI')}</span>
                                   <span className="xai-scenario-value">{analysis.xai.scenario_ignore.projected_bmi}</span>
                                 </div>
                                 <div className="xai-scenario-metric">
-                                  <span className="xai-scenario-label">Categoría estimada</span>
+                                  <span className="xai-scenario-label">{t('xai.estimatedCategory')}</span>
                                   <span className="xai-scenario-value">{analysis.xai.scenario_ignore.projected_category}</span>
                                 </div>
                               </div>
@@ -1085,30 +1192,30 @@ function Dashboard() {
                   )}
 
                   <div className="prediction-card">
-                    <h3>📊 Última Predicción</h3>
+                    <h3>{t('predictions.latestPrediction')}</h3>
                     <div className="metrics-grid">
                       <div className="metric-card" title="Tu peso actual al momento del análisis">
                         <div className="metric-icon">📈</div>
-                        <div className="metric-label">Peso Inicial</div>
+                        <div className="metric-label">{t('predictions.initialWeight')}</div>
                         <div className="metric-value">{Math.round(predData.profile_snapshot?.weight * 10) / 10} kg</div>
                       </div>
                       <div className="metric-card" title="Peso proyectado a 2 semanas según el modelo predictivo">
                         <div className="metric-icon">🔮</div>
-                        <div className="metric-label">2 Semanas</div>
+                        <div className="metric-label">{t('predictions.twoWeeks')}</div>
                         <div className="metric-value">
                           {predData.predictions_data?.predictions?.['2_weeks']?.weight_kg} kg
                         </div>
                       </div>
                       <div className="metric-card" title="Peso proyectado a 1 mes según el modelo predictivo">
                         <div className="metric-icon">🔮</div>
-                        <div className="metric-label">1 Mes</div>
+                        <div className="metric-label">{t('predictions.oneMonth')}</div>
                         <div className="metric-value">
                           {predData.predictions_data?.predictions?.['1_month']?.weight_kg} kg
                         </div>
                       </div>
                       <div className="metric-card" title="Peso proyectado a 6 meses según el modelo predictivo">
                         <div className="metric-icon">🔮</div>
-                        <div className="metric-label">6 Meses</div>
+                        <div className="metric-label">{t('predictions.sixMonths')}</div>
                         <div className="metric-value">
                           {predData.predictions_data?.predictions?.['6_months']?.weight_kg} kg
                         </div>
@@ -1121,8 +1228,8 @@ function Dashboard() {
                           {
                             type: 'scatter',
                             mode: 'lines+markers',
-                            name: 'Predicción',
-                            x: ['Actual', '2 Semanas', '1 Mes', '6 Meses'],
+                            name: t('predictions.prediction'),
+                            x: [t('predictions.actual'), t('predictions.twoWeeks'), t('predictions.oneMonth'), t('predictions.sixMonths')],
                             y: [
                               Math.round(predData.profile_snapshot?.weight * 10) / 10,
                               predData.predictions_data?.predictions?.['2_weeks']?.weight_kg,
@@ -1133,7 +1240,7 @@ function Dashboard() {
                             line: { color: '#3b82f6', width: 3 }
                           }
                         ]}
-                        layout={getChartLayout('Proyección de Peso', true)}
+                        layout={getChartLayout(t('predictions.projectionChart'), true)}
                         style={{ width: '100%' }}
                       />
                     </div>
@@ -1141,15 +1248,15 @@ function Dashboard() {
 
                   {timelineData?.has_predictions && (
                     <div className="prediction-card">
-                      <h3>📅 Progreso Real vs Predicción</h3>
+                      <h3>{t('predictions.actualVsPredicted')}</h3>
                       {timelineData.actual_progress && timelineData.actual_progress.length > 0 ? (
                         <Plot
                           data={[
                             {
                               type: 'scatter',
                               mode: 'lines+markers',
-                              name: 'Predicción',
-                              x: ['Inicio', '2 Semanas', '1 Mes', '6 Meses'],
+                              name: t('predictions.prediction'),
+                              x: [t('predictions.start'), t('predictions.twoWeeks'), t('predictions.oneMonth'), t('predictions.sixMonths')],
                               y: [
                                 Math.round(predData.profile_snapshot?.weight * 10) / 10,
                                 predData.predictions_data?.predictions?.['2_weeks']?.weight_kg,
@@ -1162,19 +1269,19 @@ function Dashboard() {
                             {
                               type: 'scatter',
                               mode: 'lines+markers',
-                              name: 'Progreso Real',
-                              x: timelineData.actual_progress.map(p => new Date(p.date).toLocaleDateString('es-ES')),
+                              name: t('predictions.realProgress'),
+                              x: timelineData.actual_progress.map(p => new Date(p.date).toLocaleDateString()),
                               y: timelineData.actual_progress.map(p => p.weight_kg),
                               marker: { color: '#10b981', size: 10 },
                               line: { color: '#10b981', width: 2 }
                             }
                           ]}
-                          layout={getChartLayout('Comparación: Predicción vs Real', true)}
+                          layout={getChartLayout(t('predictions.comparisonChart'), true)}
                           style={{ width: '100%' }}
                         />
                       ) : (
                         <div className="empty-state prediction-empty">
-                          <p>No hay progreso registrado aún. Agrega registros diarios para ver la comparación!</p>
+                          <p>{t('predictions.noProgress')}</p>
                         </div>
                       )}
                     </div>
@@ -1183,30 +1290,30 @@ function Dashboard() {
                   {statsData?.has_stats && (
                     <div className="grid-2">
                       <div className="card">
-                        <h3>🎯 Precisión de Predicciones</h3>
+                        <h3>{t('predictions.accuracyStats')}</h3>
                         <div className="prediction-stat-center">
                           <div className="prediction-accuracy-value">
                             {statsData.average_accuracy}%
                           </div>
-                          <div className="prediction-accuracy-label">Precisión promedio</div>
+                          <div className="prediction-accuracy-label">{t('predictions.avgAccuracy')}</div>
                         </div>
                       </div>
                       <div className="card">
-                        <h3>📊 Historial de Predicciones</h3>
+                        <h3>{t('predictions.predictionHistory')}</h3>
                         {statsData.details?.map((stat, i) => (
                           <div key={i} className="goal-item">
                             <div>
                               <div className="prediction-stat-value">
-                                {new Date(stat.date).toLocaleDateString('es-ES')}
+                                {new Date(stat.date).toLocaleDateString()}
                               </div>
                               {stat.accuracy?.['2_weeks'] && (
                                 <div className="prediction-stat-detail">
-                                  2 Semanas: {stat.accuracy['2_weeks'].accuracy_pct}%
+                                  {t('predictions.twoWeeks')}: {stat.accuracy['2_weeks'].accuracy_pct}%
                                 </div>
                               )}
                               {stat.accuracy?.['1_month'] && (
                                 <div className="prediction-stat-detail">
-                                  1 Mes: {stat.accuracy['1_month'].accuracy_pct}%
+                                  {t('predictions.oneMonth')}: {stat.accuracy['1_month'].accuracy_pct}%
                                 </div>
                               )}
                             </div>
@@ -1220,15 +1327,31 @@ function Dashboard() {
               ) : (
                 <div className="empty-state">
                   <div className="empty-state-icon">📈</div>
-                  <h3>Predicciones de Salud</h3>
-                  <p>Realiza un análisis de salud primero para generar predicciones personalizadas!</p>
+                  <h3>{t('predictions.emptyTitle')}</h3>
+                  <p>{t('predictions.emptyDesc')}</p>
                 </div>
               );
             })()}
 
           </div>
         )}
+
+        {activeTab === 'explainability' && (
+          <div className="tab-content">
+            <ExplainabilityCenter
+              analysis={analysis}
+              latestPrediction={analysis?.ml_prediction || latestPrediction}
+              importanceData={importanceData}
+            />
+          </div>
+        )}
       </main>
+
+      <HealthAssistant
+        analysis={analysis}
+        latestPrediction={analysis?.ml_prediction || latestPrediction}
+        xaiData={analysis?.xai || null}
+      />
     </div>
   );
 }

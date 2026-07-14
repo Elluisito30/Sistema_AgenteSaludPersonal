@@ -64,6 +64,54 @@
 
   /* ── Overlay ── */
   --overlay: rgba(0, 0, 0, 0.4);
+  --brand: #4f46e5;
+  --success: #10b981;
+  --text-secondary: #64748b;
+}
+
+html.dark {
+  --primary: #818cf8;
+  --primary-dark: #6366f1;
+  --primary-light: #a5b4fc;
+  --secondary: #34d399;
+  --secondary-light: #6ee7b7;
+  --accent: #fbbf24;
+  --accent-light: #fde68a;
+  --danger: #f87171;
+  --danger-light: #fca5a5;
+  --info: #60a5fa;
+  --info-light: #93c5fd;
+  --background: #0f172a;
+  --surface: #1e293b;
+  --surface-light: #334155;
+  --surface-hover: #475569;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-inverse: #0f172a;
+  --border: #334155;
+  --border-light: #1e293b;
+  --brand: #818cf8;
+  --success: #34d399;
+  --text-secondary: #94a3b8;
+  --success-bg: rgba(52, 211, 153, 0.1);
+  --success-border: rgba(52, 211, 153, 0.2);
+  --success-text: #6ee7b7;
+  --danger-bg: rgba(248, 113, 113, 0.1);
+  --danger-border: rgba(248, 113, 113, 0.2);
+  --danger-text: #fca5a5;
+  --warning-bg: rgba(251, 191, 36, 0.1);
+  --warning-border: rgba(251, 191, 36, 0.2);
+  --warning-text: #fde68a;
+  --info-bg: rgba(96, 165, 250, 0.1);
+  --info-border: rgba(96, 165, 250, 0.2);
+  --info-text: #93c5fd;
+  --primary-bg: rgba(129, 140, 248, 0.1);
+  --primary-border: rgba(129, 140, 248, 0.2);
+  --primary-text: #a5b4fc;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.4);
+  --overlay: rgba(0, 0, 0, 0.6);
 }
 
 * {
@@ -150,6 +198,14 @@ body {
 .sidebar-header {
   padding-bottom: 24px;
   border-bottom: 1px solid var(--border);
+}
+
+.sidebar-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 8px;
 }
 
 .app-logo {
@@ -2360,5 +2416,242 @@ body {
 
   .xai-feature-bar-container {
     display: none;
+  }
+}
+
+/* ===== Dark Mode Overrides ===== */
+html.dark .dashboard-container,
+html.dark body {
+  background: var(--background);
+  color: var(--text);
+}
+
+html.dark .profile-section,
+html.dark .analysis-results,
+html.dark .card,
+html.dark .report-card,
+html.dark .prediction-card,
+html.dark .ml-prediction-card,
+html.dark .xai-card,
+html.dark .metric-card,
+html.dark .exercise-level-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+html.dark .analysis-top-cards,
+html.dark .analysis-panels,
+html.dark .analysis-charts {
+  color: var(--text);
+}
+
+html.dark .analysis-card-label,
+html.dark .analysis-card-desc,
+html.dark .metric-label,
+html.dark .metric-desc,
+html.dark .analysis-panel-subtitle,
+html.dark .analysis-chart-card-subtitle {
+  color: var(--text-secondary);
+}
+
+html.dark .form-section-title {
+  color: var(--text-muted);
+}
+
+html.dark input[type="text"],
+html.dark input[type="number"],
+html.dark select {
+  background: var(--surface-light);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+html.dark .sidebar {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+html.dark .nav-item {
+  color: var(--text-muted);
+}
+
+html.dark .nav-item:hover {
+  background: var(--surface-light);
+  color: var(--text);
+}
+
+html.dark .nav-item.active {
+  background: var(--primary-bg);
+  color: var(--primary);
+}
+
+html.dark .report-card-header h3,
+html.dark .report-card-header p {
+  color: var(--text);
+}
+
+html.dark .xai-summary,
+html.main-reason,
+html.dark .xai-main-reason,
+html.dark .xai-confidence-text {
+  color: var(--text);
+}
+
+html.dark .xai-feature-name,
+html.dark .xai-scenario-label,
+html.dark .xai-scenario-text {
+  color: var(--text-secondary);
+}
+
+html.dark .metric-value,
+html.dark .ml-value,
+html.dark .ml-confidence-text {
+  color: var(--text);
+}
+
+html.dark .empty-state h3,
+html.dark .empty-state p {
+  color: var(--text-secondary);
+}
+
+/* ===== Report Summaries ===== */
+.reports-summaries {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.report-summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.report-summary-card h3 {
+  margin: 0 0 14px;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.report-summary-ai {
+  grid-column: 1 / -1;
+  background: var(--primary-bg);
+  border-color: var(--primary-border);
+}
+
+.summary-metrics {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.summary-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summary-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.summary-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.summary-alerts,
+.summary-goals,
+.summary-recommendations {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.summary-alerts ul,
+.summary-goals ul,
+.summary-recommendations ul {
+  margin: 4px 0 0 16px;
+  padding: 0;
+}
+
+.summary-alerts li,
+.summary-goals li,
+.summary-recommendations li {
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.ai-summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-summary-main-reason {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.ai-summary-risk {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.ai-summary-ml {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ml-badge {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--primary-bg);
+  color: var(--primary-text);
+}
+
+.ml-confidence-inline {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.ai-summary-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.ai-summary-features strong {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.ai-feature-tag {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  background: var(--surface-light);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 768px) {
+  .reports-summaries {
+    grid-template-columns: 1fr;
   }
 }
