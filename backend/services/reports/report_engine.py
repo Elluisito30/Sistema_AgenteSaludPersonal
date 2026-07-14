@@ -1,0 +1,752 @@
+"""
+Report Engine — Motor de Reportes Inteligentes.
+
+Capa de datos centralizada entre endpoints y advanced_reports.py (renderizado).
+
+Responsabilidades:
+1. Recopilar datos de múltiples fuentes (respuesta de análisis o DB)
+2. Unificar perfil + análisis + ML + XAI + alertas + objetivos + nutrición + ejercicio
+3. Organizar por 11 secciones
+4. Generar narratives interpretativas (LLM-ready)
+5. Entregar un objeto estructurado reutilizable
+
+NO genera PDF, Excel ni Word.
+NO accede a BD directamente.
+NO modifica servicios existentes.
+
+Uso:
+    engine = ReportEngine()
+    report = engine.build_from_analysis_response(analysis_response, profile, history)
+    report = engine.build_from_db(profile, analysis, predictions, history)
+"""
+
+from datetime import datetime
+
+
+# ──────────────────────────────────────────────
+# Constantes para narratives
+# ──────────────────────────────────────────────
+
+BMI_CATEGORY_LABELS = {
+    "severely_underweight": "desnutrición severa",
+    "underweight": "bajo peso",
+    "normal": "peso normal",
+    "overweight": "sobrepeso",
+    "obese_1": "obesidad grado I",
+    "obese_2_3": "obesidad grado II/III",
+}
+
+BMI_CATEGORY_DESCRIPTIONS = {
+    "severely_underweight": (
+        "IMC por debajo de 16, indicando desnutrición severa que requiere "
+        "intervención médica inmediata."
+    ),
+    "underweight": (
+        "IMC entre 16 y 18.5, indicando peso insuficiente. "
+        "Se recomienda valoración nutricional."
+    ),
+    "normal": (
+        "IMC dentro del rango saludable (18.5-25). Mantener hábitos actuales."
+    ),
+    "overweight": (
+        "IMC entre 25 y 30, indicando sobrepeso. "
+        "Se sugiere ajuste en dieta y actividad física."
+    ),
+    "obese_1": (
+        "IMC entre 30 y 35, indicando obesidad grado I. "
+        "Se requiere intervención nutricional y control médico."
+    ),
+    "obese_2_3": (
+        "IMC mayor a 35, indicando obesidad severa. "
+        "Intervención médica urgente necesaria."
+    ),
+}
+
+SEVERITY_LABELS = {
+    "critical": "Crítico",
+    "high": "Alto",
+    "medium": "Moderado",
+    "low": "Bajo",
+    "optimal": "Óptimo",
+}
+
+SEVERITY_DESCRIPTIONS = {
+    "critical": (
+        "El estado actual representa un riesgo elevado para la salud. "
+        "Se recomienda atención médica supervisada de forma prioritaria."
+    ),
+    "high": (
+        "El nivel de riesgo es alto. Es importante tomar acciones "
+        "correctivas con acompañamiento profesional."
+    ),
+    "medium": (
+        "El riesgo es moderado. Con cambios graduales en los hábitos "
+        "se puede mejorar significativamente la situación actual."
+    ),
+    "low": (
+        "El nivel de riesgo es bajo. Se recomienda mantener los "
+        "hábitos actuales y realizar seguimiento periódico."
+    ),
+    "optimal": (
+        "El estado de salud es óptimo. Se recomienda mantener "
+        "los hábitos actuales para conservar este nivel."
+    ),
+}
+
+ACTIVITY_LABELS = {
+    "sedentary": "Sedentario",
+    "light": "Ligero",
+    "moderate": "Moderado",
+    "active": "Activo",
+    "very_active": "Muy Activo",
+}
+
+GENDER_LABELS = {
+    "male": "Masculino",
+    "female": "Femenino",
+}
+
+
+# ──────────────────────────────────────────────
+# ReportEngine
+# ──────────────────────────────────────────────
+
+class ReportEngine:
+    """
+    Motor de Reportes — Capa de datos entre endpoints y renderizado.
+
+    Construye un objeto unificado a partir de:
+    - Respuesta de /api/analyze (datos en tiempo real con ML + XAI)
+    - Datos de BD (reportes históricos, puede faltar ML + XAI)
+
+    El objeto resultante contiene 11 secciones:
+      1. profile       — Datos demográficos y clínicos del paciente
+      2. analysis      — Métricas clínicas (score, BMI, BMR, TDEE, riesgo)
+      3. ml_prediction — Predicción del modelo XGBoost
+      4. xai           — Explicación interpretable del modelo
+      5. alerts        — Alertas clínicas priorizadas
+      6. goals         — Objetivos semanales
+      7. nutrition     — Plan nutricional
+      8. exercise      — Plan de ejercicio
+      9. predictions   — Proyecciones de peso
+     10. history       — Histórico de análisis
+     11. narratives    — Textos interpretativos (LLM-ready)
+    """
+
+    def build_from_analysis_response(self, analysis_response, profile, history=None):
+        """
+        Construye ReportData desde la respuesta completa de /api/analyze.
+
+        Incluye ML + XAI (datos disponibles solo en tiempo real).
+
+        Args:
+            analysis_response: dict retornado por /api/analyze (health_score, bmi,
+                ml_prediction, xai, alerts, predictions, health_plan, etc.)
+            profile: dict del perfil del paciente (health_profiles)
+            history: list[dict] de análisis anteriores (opcional)
+
+        Returns:
+            dict con las 11 secciones unificadas.
+        """
+        ar = analysis_response or {}
+        health_plan = ar.get("health_plan") or {}
+
+        return {
+            "generated_at": datetime.now().isoformat(),
+            "source": "live_analysis",
+            "profile": self._build_profile_section(profile),
+            "analysis": self._build_analysis_section(ar),
+            "ml_prediction": self._build_ml_section(ar.get("ml_prediction")),
+            "xai": self._build_xai_section(ar.get("xai")),
+            "alerts": self._build_alerts_section(ar.get("alerts")),
+            "goals": self._build_goals_section(ar.get("weekly_goals")),
+            "nutrition": self._build_nutrition_section(health_plan),
+            "exercise": self._build_exercise_section(health_plan),
+            "predictions": self._build_predictions_section(
+                ar.get("predictions"), ar
+            ),
+            "history": self._build_history_section(history),
+            "narratives": self._build_narratives(
+                profile=profile,
+                analysis=ar,
+                ml_prediction=ar.get("ml_prediction"),
+                xai=ar.get("xai"),
+                alerts=ar.get("alerts"),
+                goals=ar.get("weekly_goals"),
+                clinical_summary=ar.get("clinical_summary"),
+                health_plan=health_plan,
+                predictions=ar.get("predictions"),
+            ),
+        }
+
+    def build_from_db(self, profile, analysis, predictions=None, history=None):
+        """
+        Construye ReportData desde datos de BD (reportes históricos).
+
+        Puede no incluir ml_prediction ni xai si no están almacenados.
+        Reconstruye ml_prediction parcialmente desde health_predictions si existe.
+
+        Args:
+            profile: dict del perfil del paciente
+            analysis: dict de health_analyses (último análisis)
+            predictions: dict de health_predictions (última predicción, opcional)
+            history: list[dict] de análisis anteriores (opcional)
+
+        Returns:
+            dict con las 11 secciones unificadas.
+        """
+        analysis = analysis or {}
+        health_plan = analysis.get("health_plan") or {}
+        if isinstance(health_plan, str):
+            import json
+            try:
+                health_plan = json.loads(health_plan)
+            except (json.JSONDecodeError, TypeError):
+                health_plan = {}
+
+        ml_from_db = self._reconstruct_ml_from_predictions(predictions)
+
+        return {
+            "generated_at": datetime.now().isoformat(),
+            "source": "database",
+            "profile": self._build_profile_section(profile),
+            "analysis": self._build_analysis_section(analysis),
+            "ml_prediction": self._build_ml_section(ml_from_db),
+            "xai": self._build_xai_section(None),
+            "alerts": self._build_alerts_section(analysis.get("alerts")),
+            "goals": self._build_goals_section(analysis.get("weekly_goals")),
+            "nutrition": self._build_nutrition_section(health_plan),
+            "exercise": self._build_exercise_section(health_plan),
+            "predictions": self._build_predictions_section(
+                self._extract_predictions_from_db(predictions), analysis
+            ),
+            "history": self._build_history_section(history),
+            "narratives": self._build_narratives(
+                profile=profile,
+                analysis=analysis,
+                ml_prediction=ml_from_db,
+                xai=None,
+                alerts=analysis.get("alerts"),
+                goals=analysis.get("weekly_goals"),
+                clinical_summary=None,
+                health_plan=health_plan,
+                predictions=self._extract_predictions_from_db(predictions),
+            ),
+        }
+
+    # ──────────────────────────────────────────────
+    # Section builders
+    # ──────────────────────────────────────────────
+
+    def _build_profile_section(self, profile):
+        p = profile or {}
+        return {
+            "age": p.get("age"),
+            "gender": p.get("gender"),
+            "gender_label": GENDER_LABELS.get(p.get("gender"), p.get("gender")),
+            "height_cm": p.get("height_cm"),
+            "weight_kg": p.get("weight_kg"),
+            "activity_level": p.get("activity_level"),
+            "activity_label": ACTIVITY_LABELS.get(
+                p.get("activity_level"), p.get("activity_level")
+            ),
+            "sleep_hours": p.get("sleep_hours"),
+            "smokes": p.get("smokes", False),
+            "has_chronic_conditions": p.get("has_chronic_conditions", False),
+            "chronic_conditions_detail": p.get("chronic_conditions_detail"),
+            "chronic_diseases": p.get("chronic_diseases") or [],
+            "genetic_risk_factors": p.get("genetic_risk_factors") or [],
+            "genetics_risk": p.get("genetics_risk", "low"),
+            "health_goals": p.get("health_goals") or [],
+            "family_history": p.get("family_history", False),
+            "favc": p.get("favc"),
+            "fcvc": p.get("fcvc"),
+            "ch2o": p.get("ch2o"),
+            "email": p.get("email"),
+        }
+
+    def _build_analysis_section(self, analysis):
+        a = analysis or {}
+        bmi_category = a.get("bmi_category", "normal")
+        return {
+            "health_score": a.get("health_score", 0),
+            "bmi": a.get("bmi", 0),
+            "bmi_category": bmi_category,
+            "bmi_label": BMI_CATEGORY_LABELS.get(bmi_category, bmi_category),
+            "bmi_description": BMI_CATEGORY_DESCRIPTIONS.get(bmi_category, ""),
+            "bmr": a.get("bmr", 0),
+            "tdee": a.get("tdee", 0),
+            "health_risk": a.get("health_risk", ""),
+            "health_risk_label": a.get("health_risk", ""),
+            "fitness_level": a.get("fitness_level", ""),
+            "next_checkup": a.get("next_checkup", ""),
+            "confidence_score": a.get("confidence_score", 0),
+            "analyzed_at": a.get("analyzed_at", ""),
+        }
+
+    def _build_ml_section(self, ml_prediction):
+        ml = ml_prediction or {}
+        if not ml.get("predicted_class") and ml.get("predicted_class") != 0:
+            return {
+                "available": False,
+                "predicted_class": None,
+                "predicted_class_label": None,
+                "confidence": 0,
+                "model_used": "none",
+                "inference_time_ms": 0,
+                "probabilities": {},
+            }
+        predicted_class = ml.get("predicted_class", "")
+        return {
+            "available": True,
+            "predicted_class": predicted_class,
+            "predicted_class_label": (
+                predicted_class.replace("_", " ") if predicted_class else ""
+            ),
+            "confidence": ml.get("confidence", 0),
+            "model_used": ml.get("model_used", "none"),
+            "inference_time_ms": ml.get("inference_time_ms", 0),
+            "probabilities": ml.get("probabilities") or {},
+        }
+
+    def _build_xai_section(self, xai):
+        x = xai or {}
+        if not x:
+            return {
+                "available": False,
+                "summary": None,
+                "main_reason": None,
+                "confidence_text": None,
+                "risk_explanation": None,
+                "recommendations": [],
+                "important_features": [],
+                "scenario_follow": None,
+                "scenario_ignore": None,
+            }
+        return {
+            "available": True,
+            "summary": x.get("summary"),
+            "main_reason": x.get("main_reason"),
+            "confidence_text": x.get("confidence_text"),
+            "risk_explanation": x.get("risk_explanation"),
+            "recommendations": x.get("recommendations") or [],
+            "important_features": x.get("important_features") or [],
+            "scenario_follow": x.get("scenario_follow"),
+            "scenario_ignore": x.get("scenario_ignore"),
+        }
+
+    def _build_alerts_section(self, alerts):
+        alerts_list = alerts or []
+        result = []
+        for alert in alerts_list:
+            result.append({
+                "type": alert.get("type", ""),
+                "message": alert.get("message", ""),
+                "priority": alert.get("priority", "low"),
+                "icon": alert.get("icon", ""),
+            })
+        high = [a for a in result if a["priority"] == "high"]
+        medium = [a for a in result if a["priority"] == "medium"]
+        low = [a for a in result if a["priority"] not in ("high", "medium")]
+        return {
+            "all": result,
+            "high": high,
+            "medium": medium,
+            "low": low,
+            "total_count": len(result),
+            "high_count": len(high),
+        }
+
+    def _build_goals_section(self, weekly_goals):
+        goals = weekly_goals or []
+        return {
+            "all": goals,
+            "count": len(goals),
+        }
+
+    def _build_nutrition_section(self, health_plan):
+        nutrition = {}
+        if health_plan:
+            nutrition = health_plan.get("nutrition") or {}
+        macros = nutrition.get("macronutrients") or {}
+        return {
+            "daily_calories": nutrition.get("daily_calories", 0),
+            "macronutrients": {
+                "protein_g": macros.get("protein", 0),
+                "carbs_g": macros.get("carbs", 0),
+                "fats_g": macros.get("fats", 0),
+            },
+            "recommendations": nutrition.get("recommendations") or [],
+            "calorie_note": nutrition.get("calorie_note", ""),
+        }
+
+    def _build_exercise_section(self, health_plan):
+        exercise = {}
+        if health_plan:
+            exercise = health_plan.get("exercise") or {}
+        return {
+            "cardio": exercise.get("cardio", "N/A"),
+            "strength": exercise.get("strength", "N/A"),
+            "flexibility": exercise.get("flexibility", "N/A"),
+            "fitness_level": exercise.get("fitness_level", ""),
+        }
+
+    def _build_predictions_section(self, predictions, analysis=None):
+        pred_data = predictions or {}
+        preds = pred_data.get("predictions_data", {}).get("predictions") or {}
+        analysis = analysis or {}
+
+        current_weight = (
+            pred_data.get("profile_snapshot", {}).get("weight")
+            or analysis.get("bmi")
+        )
+
+        return {
+            "current_weight_kg": current_weight,
+            "two_weeks_kg": preds.get("2_weeks", {}).get("weight_kg"),
+            "one_month_kg": preds.get("1_month", {}).get("weight_kg"),
+            "six_months_kg": preds.get("6_months", {}).get("weight_kg"),
+            "model_used": pred_data.get("model_used", ""),
+            "confidence_score": pred_data.get("confidence_score", 0),
+            "raw": pred_data,
+        }
+
+    def _build_history_section(self, history):
+        history_list = history or []
+        entries = []
+        for h in history_list:
+            entries.append({
+                "analyzed_at": h.get("analyzed_at", ""),
+                "health_score": h.get("health_score", 0),
+                "bmi": h.get("bmi"),
+                "health_risk": h.get("health_risk", ""),
+                "fitness_level": h.get("fitness_level", ""),
+            })
+        return {
+            "entries": entries,
+            "count": len(entries),
+            "has_data": len(entries) > 0,
+        }
+
+    # ──────────────────────────────────────────────
+    # Reconstruction helpers (DB → structured data)
+    # ──────────────────────────────────────────────
+
+    def _reconstruct_ml_from_predictions(self, predictions):
+        if not predictions:
+            return None
+        model_used = predictions.get("model_used", "")
+        if not model_used:
+            return None
+        confidence = predictions.get("confidence_score", 0)
+        if isinstance(confidence, float) and confidence <= 1.0:
+            confidence = round(confidence * 100, 1)
+        return {
+            "predicted_class": None,
+            "confidence": confidence,
+            "model_used": model_used,
+            "inference_time_ms": 0,
+            "probabilities": {},
+        }
+
+    def _extract_predictions_from_db(self, predictions):
+        if not predictions:
+            return None
+        return {
+            "predictions_data": predictions.get("predictions_data") or {},
+            "model_used": predictions.get("model_used", ""),
+            "confidence_score": predictions.get("confidence_score", 0),
+            "profile_snapshot": predictions.get("profile_snapshot") or {},
+        }
+
+    # ──────────────────────────────────────────────
+    # Narratives — Textos interpretativos (LLM-ready)
+    # ──────────────────────────────────────────────
+
+    def _build_narratives(
+        self, profile, analysis, ml_prediction, xai, alerts,
+        goals, clinical_summary, health_plan, predictions,
+    ):
+        """
+        Genera narratives interpretativas centralizadas.
+
+        Cada narrative contiene:
+          - title: título de la sección
+          - text: texto interpretativo (template-based, reemplazable por LLM)
+          - type: categoría de la narrative
+          - llm_replaceable: True si un LLM puede generar este texto
+          - context: datos crudos que un LLM usaría como contexto
+        """
+        return {
+            "clinical_summary": self._narrative_clinical_summary(
+                analysis, clinical_summary
+            ),
+            "bmi_interpretation": self._narrative_bmi_interpretation(analysis),
+            "risk_interpretation": self._narrative_risk_interpretation(
+                analysis, alerts
+            ),
+            "ml_interpretation": self._narrative_ml_interpretation(
+                ml_prediction, xai
+            ),
+            "recommendations_summary": self._narrative_recommendations(
+                goals, alerts, health_plan
+            ),
+            "prognosis": self._narrative_prognosis(predictions, analysis, xai),
+        }
+
+    def _narrative_clinical_summary(self, analysis, clinical_summary):
+        a = analysis or {}
+        health_score = a.get("health_score", 0)
+        severity = a.get("health_risk", "")
+        bmi = a.get("bmi", 0)
+        bmi_category = a.get("bmi_category", "normal")
+        bmi_label = BMI_CATEGORY_LABELS.get(bmi_category, "")
+        fitness = a.get("fitness_level", "")
+
+        if clinical_summary:
+            text = clinical_summary.get("description", "")
+            title = clinical_summary.get("title", "Resumen Clínico")
+        else:
+            title = "Resumen Clínico"
+            if health_score >= 80:
+                text = (
+                    f"El paciente presenta un buen estado de salud con un "
+                    f"puntaje de {health_score}/100. "
+                )
+            elif health_score >= 60:
+                text = (
+                    f"El paciente presenta un estado de salud moderado con un "
+                    f"puntaje de {health_score}/100. "
+                )
+            else:
+                text = (
+                    f"El paciente presenta un estado de salud que requiere "
+                    f"atención, con un puntaje de {health_score}/100. "
+                )
+            text += (
+                f"El nivel de riesgo clínico es '{severity}'. "
+                f"Clasificación BMI: {bmi_label} (IMC {bmi})."
+            )
+
+        return {
+            "title": title,
+            "text": text,
+            "type": "clinical_summary",
+            "llm_replaceable": True,
+            "context": {
+                "health_score": health_score,
+                "severity": severity,
+                "bmi": bmi,
+                "bmi_category": bmi_category,
+                "bmi_label": bmi_label,
+                "fitness_level": fitness,
+                "clinical_summary_raw": clinical_summary,
+            },
+        }
+
+    def _narrative_bmi_interpretation(self, analysis):
+        a = analysis or {}
+        bmi = a.get("bmi", 0)
+        bmi_category = a.get("bmi_category", "normal")
+        bmi_label = BMI_CATEGORY_LABELS.get(bmi_category, "")
+        bmi_desc = BMI_CATEGORY_DESCRIPTIONS.get(bmi_category, "")
+
+        text = f"El IMC actual es {bmi}, correspondiente a {bmi_label}. {bmi_desc}"
+
+        return {
+            "title": "Interpretación del IMC",
+            "text": text,
+            "type": "bmi_interpretation",
+            "llm_replaceable": True,
+            "context": {
+                "bmi": bmi,
+                "bmi_category": bmi_category,
+                "bmi_label": bmi_label,
+                "bmi_description": bmi_desc,
+            },
+        }
+
+    def _narrative_risk_interpretation(self, analysis, alerts):
+        a = analysis or {}
+        severity = a.get("health_risk", "")
+        health_score = a.get("health_score", 0)
+        severity_lower = severity.lower() if severity else "medium"
+
+        risk_text = SEVERITY_DESCRIPTIONS.get(severity_lower, "")
+        if not risk_text:
+            for key in SEVERITY_DESCRIPTIONS:
+                if key in severity_lower:
+                    risk_text = SEVERITY_DESCRIPTIONS[key]
+                    break
+            if not risk_text:
+                risk_text = SEVERITY_DESCRIPTIONS["medium"]
+
+        high_alerts = [
+            al for al in (alerts or []) if al.get("priority") == "high"
+        ]
+        alert_note = ""
+        if high_alerts:
+            msgs = [al.get("message", "") for al in high_alerts[:2]]
+            alert_note = " " + " ".join(msgs)
+
+        text = f"{risk_text}{alert_note}"
+
+        return {
+            "title": "Interpretación del Riesgo",
+            "text": text,
+            "type": "risk_interpretation",
+            "llm_replaceable": True,
+            "context": {
+                "severity": severity,
+                "health_score": health_score,
+                "high_alert_messages": [
+                    al.get("message", "") for al in high_alerts
+                ],
+            },
+        }
+
+    def _narrative_ml_interpretation(self, ml_prediction, xai):
+        ml = ml_prediction or {}
+        x = xai or {}
+
+        predicted_class = ml.get("predicted_class") or ""
+        confidence = ml.get("confidence", 0)
+        ml_available = bool(predicted_class) or confidence > 0
+
+        if not ml_available:
+            return {
+                "title": "Interpretación del Modelo ML",
+                "text": "No hay predicción del modelo ML disponible para este análisis.",
+                "type": "ml_interpretation",
+                "llm_replaceable": True,
+                "context": {"available": False},
+            }
+
+        class_label = predicted_class.replace("_", " ") if predicted_class else ""
+        text = (
+            f"El modelo ML clasifica al paciente como '{class_label}' "
+            f"con un {confidence}% de confianza."
+        )
+
+        if x.get("summary"):
+            text += f" {x['summary']}"
+        if x.get("main_reason"):
+            text += f" {x['main_reason']}"
+
+        return {
+            "title": "Interpretación del Modelo ML",
+            "text": text,
+            "type": "ml_interpretation",
+            "llm_replaceable": True,
+            "context": {
+                "available": True,
+                "predicted_class": predicted_class,
+                "predicted_class_label": class_label,
+                "confidence": confidence,
+                "model_used": ml.get("model_used", ""),
+                "xai_summary": x.get("summary"),
+                "xai_main_reason": x.get("main_reason"),
+            },
+        }
+
+    def _narrative_recommendations(self, goals, alerts, health_plan):
+        parts = []
+
+        goals_list = goals or []
+        if goals_list:
+            parts.append("Objetivos semanales recomendados:")
+            for g in goals_list[:5]:
+                parts.append(f"- {g}")
+
+        high_alerts = [
+            al for al in (alerts or []) if al.get("priority") == "high"
+        ]
+        if high_alerts:
+            parts.append("Atenciones prioritarias:")
+            for al in high_alerts[:2]:
+                msg = al.get("message", "")
+                if msg:
+                    parts.append(f"- {msg}")
+
+        nutrition = {}
+        if health_plan:
+            nutrition = health_plan.get("nutrition") or {}
+        recs = nutrition.get("recommendations") or []
+        if recs:
+            parts.append("Recomendaciones nutricionales:")
+            for r in recs[:3]:
+                parts.append(f"- {r}")
+
+        if not parts:
+            parts.append(
+                "Mantener hábitos saludables y realizar seguimiento periódico."
+            )
+
+        text = "\n".join(parts)
+
+        return {
+            "title": "Resumen de Recomendaciones",
+            "text": text,
+            "type": "recommendations_summary",
+            "llm_replaceable": True,
+            "context": {
+                "goals": goals_list,
+                "high_alert_messages": [
+                    al.get("message", "") for al in high_alerts
+                ],
+                "nutrition_recommendations": recs,
+            },
+        }
+
+    def _narrative_prognosis(self, predictions, analysis, xai):
+        p = predictions or {}
+        preds = p.get("predictions_data", {}).get("predictions") or {}
+        a = analysis or {}
+        x = xai or {}
+
+        six_months = preds.get("6_months", {}).get("weight_kg")
+        one_month = preds.get("1_month", {}).get("weight_kg")
+        current_bmi = a.get("bmi", 0)
+        height_cm = a.get("height_cm") or (a.get("bmi") and 0)
+        bmi_category = a.get("bmi_category", "normal")
+        text = ""
+
+        if x and x.get("scenario_follow"):
+            sf = x["scenario_follow"]
+            text = sf.get("evolution_text", "")
+            if sf.get("projected_category"):
+                text += (
+                    f" Proyectado a 6 meses: IMC {sf.get('projected_bmi', '')} "
+                    f"({sf.get('projected_category', '')})."
+                )
+
+        if not text and six_months and six_months >= 30:
+            text = (
+                f"Proyección a 6 meses: peso estimado {six_months} kg. "
+                f"Siguiendo el plan actual, se espera estabilización "
+                f"o mejora gradual."
+            )
+
+        if not text:
+            text = (
+                "No hay suficientes datos para generar un pronóstico. "
+                "Se recomienda un nuevo análisis para establecer proyecciones."
+            )
+
+        return {
+            "title": "Pronóstico",
+            "text": text,
+            "type": "prognosis",
+            "llm_replaceable": True,
+            "context": {
+                "current_weight_kg": a.get("bmi"),
+                "projected_6m_kg": six_months,
+                "projected_1m_kg": one_month,
+                "current_bmi": current_bmi,
+                "current_bmi_category": bmi_category,
+                "scenario_follow": x.get("scenario_follow") if x else None,
+                "scenario_ignore": x.get("scenario_ignore") if x else None,
+            },
+        }
+
+

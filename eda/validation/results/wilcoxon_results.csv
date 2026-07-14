@@ -1,0 +1,29 @@
+metric,model_A,model_B,n_folds,mean_A,mean_B,mean_diff,wilcoxon_stat,wilcoxon_p,wilcoxon_interpretation,paired_t_stat,paired_t_p,paired_t_interpretation
+accuracy,Logistic Regression,Random Forest,2,0.856745,0.928094,-0.071349,0.0,0.5,not significant,-inf,0.0,significant
+accuracy,Logistic Regression,XGBoost,2,0.856745,0.942586,-0.085842,0.0,0.5,not significant,-25.666667,0.024791,significant
+accuracy,Logistic Regression,MLP,2,0.856745,0.943701,-0.086957,0.0,0.5,not significant,-11.142857,0.05698,not significant
+accuracy,Random Forest,XGBoost,2,0.928094,0.942586,-0.014493,0.0,0.5,not significant,-4.333333,0.144385,not significant
+accuracy,Random Forest,MLP,2,0.928094,0.943701,-0.015608,0.0,0.5,not significant,-2.0,0.295167,not significant
+accuracy,XGBoost,MLP,2,0.942586,0.943701,-0.001115,1.0,1.0,not significant,-0.25,0.844042,not significant
+balanced_accuracy,Logistic Regression,Random Forest,2,0.854941,0.926139,-0.071198,0.0,0.5,not significant,-778.433105,0.000818,significant
+balanced_accuracy,Logistic Regression,XGBoost,2,0.854941,0.941688,-0.086747,0.0,0.5,not significant,-20.19973,0.031491,significant
+balanced_accuracy,Logistic Regression,MLP,2,0.854941,0.941702,-0.086761,0.0,0.5,not significant,-11.751229,0.054045,not significant
+balanced_accuracy,Random Forest,XGBoost,2,0.926139,0.941688,-0.015549,0.0,0.5,not significant,-3.699429,0.168069,not significant
+balanced_accuracy,Random Forest,MLP,2,0.926139,0.941702,-0.015563,0.0,0.5,not significant,-2.134305,0.278942,not significant
+balanced_accuracy,XGBoost,MLP,2,0.941688,0.941702,-1.4e-05,1.0,1.0,not significant,-0.00452,0.997122,not significant
+f1_macro,Logistic Regression,Random Forest,2,0.851899,0.926777,-0.074877,0.0,0.5,not significant,-85.604271,0.007436,significant
+f1_macro,Logistic Regression,XGBoost,2,0.851899,0.941711,-0.089812,0.0,0.5,not significant,-33.852729,0.0188,significant
+f1_macro,Logistic Regression,MLP,2,0.851899,0.9409,-0.089,0.0,0.5,not significant,-13.807331,0.046027,significant
+f1_macro,Random Forest,XGBoost,2,0.926777,0.941711,-0.014934,0.0,0.5,not significant,-4.23347,0.147671,not significant
+f1_macro,Random Forest,MLP,2,0.926777,0.9409,-0.014123,0.0,0.5,not significant,-1.929254,0.304437,not significant
+f1_macro,XGBoost,MLP,2,0.941711,0.9409,0.000811,1.0,1.0,not significant,0.213864,0.86587,not significant
+roc_auc_ovr,Logistic Regression,Random Forest,2,0.980147,0.992815,-0.012668,0.0,0.5,not significant,-15.237802,0.041719,significant
+roc_auc_ovr,Logistic Regression,XGBoost,2,0.980147,0.99627,-0.016123,0.0,0.5,not significant,-20.86001,0.030495,significant
+roc_auc_ovr,Logistic Regression,MLP,2,0.980147,0.996495,-0.016348,0.0,0.5,not significant,-657.340807,0.000968,significant
+roc_auc_ovr,Random Forest,XGBoost,2,0.992815,0.99627,-0.003455,0.0,0.5,not significant,-59.124685,0.010766,significant
+roc_auc_ovr,Random Forest,MLP,2,0.992815,0.996495,-0.00368,0.0,0.5,not significant,-4.562808,0.137352,not significant
+roc_auc_ovr,XGBoost,MLP,2,0.99627,0.996495,-0.000225,1.0,1.0,not significant,-0.300488,0.814168,not significant
+accuracy,XGBoost_11F,XGBoost_6F,50,0.985317,0.973475,0.011842,119.5,4e-06,significant,6.166046,0.0,significant
+balanced_accuracy,XGBoost_11F,XGBoost_6F,50,0.985024,0.972956,0.012068,152.5,3e-06,significant,6.169516,0.0,significant
+f1_macro,XGBoost_11F,XGBoost_6F,50,0.984981,0.973006,0.011975,153.0,0.0,significant,6.147292,0.0,significant
+roc_auc_ovr,XGBoost_11F,XGBoost_6F,50,0.999666,0.99831,0.001356,113.0,0.0,significant,4.718539,2e-05,significant

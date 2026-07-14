@@ -1,0 +1,8 @@
+class,n_samples,mlp_accuracy,xgb_accuracy,accuracy_diff,mlp_mean_confidence,xgb_mean_confidence
+Insufficient_Weight,41,1.0,1.0,0.0,0.984121,0.997049
+Normal_Weight,43,0.837209,0.674419,0.162791,0.831356,0.618837
+Obesity_Type_I,53,0.981132,0.943396,0.037736,0.982358,0.940155
+Obesity_Type_II,45,1.0,1.0,0.0,0.99966,0.996473
+Obesity_Type_III,49,0.979592,0.979592,0.0,0.985599,0.97927
+Overweight_Level_I,43,0.883721,1.0,-0.116279,0.868813,0.960474
+Overweight_Level_II,43,0.976744,1.0,-0.023256,0.90102,0.97454

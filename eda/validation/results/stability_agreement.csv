@@ -1,0 +1,4 @@
+comparison,cohen_kappa,agreement_rate,n_samples
+Logistic Regression vs Random Forest,0.693727,0.73817,317
+Logistic Regression vs XGBoost_11F,0.697519,0.741325,317
+Random Forest vs XGBoost_11F,0.988944,0.990536,317
