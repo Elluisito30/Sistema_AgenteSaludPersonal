@@ -1,0 +1,57 @@
+[
+  {
+    "feature": "BMI",
+    "importance": 0.7489,
+    "display_name": "IMC"
+  },
+  {
+    "feature": "FCVC",
+    "importance": 0.1058,
+    "display_name": "Consumo de vegetales"
+  },
+  {
+    "feature": "Height",
+    "importance": 0.0298,
+    "display_name": "Estatura"
+  },
+  {
+    "feature": "Weight",
+    "importance": 0.0292,
+    "display_name": "Peso"
+  },
+  {
+    "feature": "Age",
+    "importance": 0.023,
+    "display_name": "Edad"
+  },
+  {
+    "feature": "CH2O",
+    "importance": 0.0193,
+    "display_name": "Consumo de agua"
+  },
+  {
+    "feature": "family_history",
+    "importance": 0.0188,
+    "display_name": "Antecedentes familiares"
+  },
+  {
+    "feature": "FAVC",
+    "importance": 0.0145,
+    "display_name": "Comida chatarra"
+  },
+  {
+    "feature": "FAF",
+    "importance": 0.0108,
+    "display_name": "Actividad física"
+  },
+  {
+    "feature": "Gender",
+    "importance": 0.0,
+    "display_name": "Sexo"
+  },
+  {
+    "feature": "SMOKE",
+    "importance": 0.0,
+    "display_name": "Tabaquismo"
+  }
+]

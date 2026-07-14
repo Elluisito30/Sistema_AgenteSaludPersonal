@@ -29,6 +29,10 @@ CREATE TABLE IF NOT EXISTS health_profiles (
     health_goals TEXT[],
     chronic_diseases TEXT[],
     genetic_risk_factors TEXT[],
+    family_history BOOLEAN DEFAULT FALSE,
+    favc VARCHAR(20) DEFAULT 'Sometimes',
+    fcvc DECIMAL(3,1) DEFAULT 2.0,
+    ch2o DECIMAL(3,1) DEFAULT 2.0,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(user_id)

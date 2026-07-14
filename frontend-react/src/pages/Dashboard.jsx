@@ -78,7 +78,11 @@ function Dashboard() {
       has_chronic_conditions: e.target.hasChronic.checked,
       chronic_conditions_detail: e.target.chronicDetail ? e.target.chronicDetail.value : '',
       genetics_risk: e.target.geneticsRisk ? e.target.geneticsRisk.value : 'low',
-      health_goals: selectedGoals
+      health_goals: selectedGoals,
+      family_history: e.target.familyHistory ? e.target.familyHistory.checked : false,
+      favc: e.target.favc ? e.target.favc.value : 'Sometimes',
+      fcvc: e.target.fcvc ? parseFloat(e.target.fcvc.value) : 2.0,
+      ch2o: e.target.ch2o ? parseFloat(e.target.ch2o.value) : 2.0,
     };
 
     const result = await apiRequest('/api/profile', 'POST', data, token);
@@ -122,6 +126,20 @@ function Dashboard() {
     return 'Mejorable';
   };
 
+  const getScoreColorVar = (score) => {
+    if (score < 40) return 'var(--danger)';
+    if (score <= 60) return 'var(--accent)';
+    if (score <= 80) return 'var(--accent)';
+    return 'var(--secondary)';
+  };
+
+  const getScoreBorderClass = (score) => {
+    if (score < 40) return 'score-danger';
+    if (score <= 60) return 'score-accent';
+    if (score <= 80) return 'score-warning';
+    return 'score-good';
+  };
+
   const downloadReport = async (endpoint, filename) => {
     try {
       const response = await fetch(`${endpoint}?language=${reportLanguage}`, {
@@ -148,41 +166,58 @@ function Dashboard() {
     }
   };
 
-
-
-  // Light theme chart layout
   const getChartLayout = (title, isBar = false, isPie = false) => {
+    const baseFont = { family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif', color: '#475569' };
+    const titleFont = { ...baseFont, size: 15, color: '#1e293b' };
+
     if (isPie) {
       return {
-        title: { text: title, font: { color: '#1e293b', size: 16, family: 'Inter, sans-serif' } },
+        title: { text: title, font: titleFont, x: 0.02, xanchor: 'left' },
         paper_bgcolor: 'rgba(255,255,255,0)',
         plot_bgcolor: 'rgba(255,255,255,0)',
-        height: 400,
-        margin: { t: 50, b: 20, l: 20, r: 20 },
-        font: { color: '#475569', family: 'Inter, sans-serif' },
+        height: 360,
+        margin: { t: 44, b: 24, l: 16, r: 16 },
+        font: baseFont,
         showlegend: true,
         legend: {
           x: 0.5,
-          y: -0.2,
+          y: -0.15,
           xanchor: 'center',
-          orientation: 'h'
+          orientation: 'h',
+          font: { size: 12, color: '#475569' }
+        },
+        hoverlabel: {
+          bgcolor: '#1e293b',
+          bordercolor: '#1e293b',
+          font: { family: baseFont.family, size: 13, color: '#ffffff' }
         }
       };
     }
     return {
-      title: { text: title, font: { color: '#1e293b', size: 16, family: 'Inter, sans-serif' } },
+      title: { text: title, font: titleFont, x: 0.02, xanchor: 'left' },
       paper_bgcolor: 'rgba(255,255,255,0)',
       plot_bgcolor: 'rgba(255,255,255,0)',
-      height: 400,
-      margin: { t: 50, b: 60, l: 60, r: 30 },
-      font: { color: '#475569', family: 'Inter, sans-serif' },
+      height: 360,
+      margin: { t: 44, b: 56, l: 52, r: 20 },
+      font: baseFont,
+      hoverlabel: {
+        bgcolor: '#1e293b',
+        bordercolor: '#1e293b',
+        font: { family: baseFont.family, size: 13, color: '#ffffff' }
+      },
       xaxis: {
-        tickfont: { color: '#475569' },
-        gridcolor: '#e2e8f0'
+        tickfont: { size: 12, color: '#64748b' },
+        gridcolor: '#f1f5f9',
+        zerolinecolor: '#e2e8f0'
       },
       yaxis: {
-        tickfont: { color: '#475569' },
-        gridcolor: '#e2e8f0'
+        tickfont: { size: 12, color: '#64748b' },
+        gridcolor: '#f1f5f9',
+        zerolinecolor: '#e2e8f0'
+      },
+      bargap: 0.35,
+      legend: {
+        font: { size: 12, color: '#475569' }
       }
     };
   };
@@ -253,19 +288,21 @@ function Dashboard() {
 
         {message && (
           <div className={`message ${message.type}`}>
+            <span className="message-icon">
+              {message.type === 'success' ? '✓' : message.type === 'error' ? '✕' : 'ℹ'}
+            </span>
             {message.text}
           </div>
         )}
 
         {activeTab === 'dashboard' && (
           <div className="tab-content">
-            {/* FIX ESTÉTICO: alignItems: 'start' evita que la columna derecha
-                se estire para igualar la altura del formulario de la izquierda */}
-            <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '24px', marginBottom: '32px', alignItems: 'start' }}>
+            <div className="analysis-grid">
               <div>
                 <div className="profile-section">
                   <h3>📝 Mi Perfil</h3>
                   <form key={profile ? 'loaded' : 'new'} onSubmit={saveProfile} className="profile-form" id="profileForm">
+                    <div className="form-section-title">Datos Personales</div>
                     <div className="form-row">
                       <div className="form-group">
                         <label>Edad</label>
@@ -315,6 +352,7 @@ function Dashboard() {
                       </div>
                     </div>
 
+                    <div className="form-section-title">Estilo de Vida</div>
                     <div className="form-group">
                       <label>Nivel de Actividad</label>
                       <select name="activityLevel" defaultValue={profile?.activity_level || ''} required>
@@ -348,6 +386,7 @@ function Dashboard() {
                       </select>
                     </div>
 
+                    <div className="form-section-title">Salud</div>
                     <div className="form-check">
                       <input type="checkbox" name="smokes" defaultChecked={profile?.smokes} id="smokes" />
                       <label htmlFor="smokes">Fumador</label>
@@ -366,6 +405,41 @@ function Dashboard() {
                       <input type="text" name="chronicDetail" defaultValue={profile?.chronic_conditions_detail || ''} placeholder="Ej. Diabetes, Hipertensión..." />
                     </div>
 
+                    <div className="form-check">
+                      <input type="checkbox" name="familyHistory" defaultChecked={profile?.family_history} id="familyHistory" />
+                      <label htmlFor="familyHistory">Antecedentes familiares de obesidad</label>
+                    </div>
+
+                    <div className="form-section-title">Nutrición</div>
+                    <div className="form-group">
+                      <label>¿Consume frecuentemente comida chatarra? (FAVC)</label>
+                      <select name="favc" defaultValue={profile?.favc || 'Sometimes'}>
+                        <option value="Always">Siempre</option>
+                        <option value="Frequently">Frecuentemente</option>
+                        <option value="Sometimes">A veces</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>¿Cuántas veces come vegetales por comida? (FCVC)</label>
+                      <select name="fcvc" defaultValue={profile?.fcvc || 2.0}>
+                        <option value="1">1 — Casi nunca</option>
+                        <option value="2">2 — A veces</option>
+                        <option value="3">3 — Siempre</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Litros de agua diarios (CH2O)</label>
+                      <select name="ch2o" defaultValue={profile?.ch2o || 2.0}>
+                        <option value="1">Menos de 1L</option>
+                        <option value="2">1–2 Litros</option>
+                        <option value="3">Más de 2 Litros</option>
+                      </select>
+                    </div>
+
+                    <div className="form-section-title">Objetivos</div>
                     <div className="form-group">
                       <label>Objetivos de Salud</label>
                       <select name="healthGoals" multiple defaultValue={profile?.health_goals || []} size="6" required>
@@ -380,88 +454,96 @@ function Dashboard() {
                   </form>
                 </div>
 
-                <div style={{ marginTop: '16px' }}>
+                <div className="analyze-button-area">
                   <button
                     type="submit"
                     form="profileForm"
-                    className="btn-primary btn-large"
+                    className={`btn-primary btn-large ${loading ? 'loading' : ''}`}
                     disabled={loading}
                   >
-                    🤖 Analizar mi Salud
+                    {loading ? (
+                      <>
+                        <span className="btn-loading-spinner"></span>
+                        Analizando...
+                      </>
+                    ) : (
+                      '🤖 Analizar mi Salud'
+                    )}
                   </button>
                 </div>
               </div>
 
-              {/* FIX ESTÉTICO: position sticky para que este panel se mantenga
-                  visible mientras se scrollea el formulario largo de la izquierda,
-                  en vez de dejar un hueco blanco debajo */}
-              <div style={{ position: 'sticky', top: '20px' }}>
+              <div className="analysis-results">
                 {analysis ? (
                   <div>
-                    <div className="header-section" style={{ marginTop: '0px', marginBottom: '20px' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-                        {/* Tarjeta 1: Score */}
-                        <div style={{ 
-                          backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', 
-                          padding: '20px', textAlign: 'center', borderBottom: `4px solid ${analysis.health_score < 40 ? '#e74c3c' : analysis.health_score <= 60 ? '#e67e22' : analysis.health_score <= 80 ? '#f1c40f' : '#2ecc71'}` 
-                        }}>
-                          <div style={{ color: '#7f8c8d', fontSize: '1.1rem', fontWeight: '600', marginBottom: '10px' }}>Health Score</div>
-                          <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: analysis.health_score < 40 ? '#e74c3c' : analysis.health_score <= 60 ? '#e67e22' : analysis.health_score <= 80 ? '#f1c40f' : '#2ecc71' }}>
-                            {analysis.health_score}<span style={{fontSize: '1.2rem'}}>/100</span>
-                          </div>
-                          <div style={{ fontSize: '0.9rem', color: '#95a5a6', marginTop: '5px' }}>Puntuación penalizada</div>
+                    <div className="analysis-top-cards">
+                      <div className={`analysis-card score ${getScoreBorderClass(analysis.health_score)}`}>
+                        <div className="analysis-card-icon" title="Tu puntuación general de salud basada en todos los factores analizados">❤️</div>
+                        <div className="analysis-card-label">Health Score</div>
+                        <div className="analysis-card-value tooltip-trigger" title="Puntuación de 0 a 100 que refleja tu estado general de salud. Más alto = mejor." style={{ color: getScoreColorVar(analysis.health_score) }}>
+                          {analysis.health_score}<span className="score-value-suffix">/100</span>
                         </div>
+                        <div className="analysis-card-desc">Puntuación general de salud</div>
+                        <span className={`analysis-card-badge ${analysis.health_score < 60 ? 'warning' : analysis.health_score >= 80 ? '' : 'info'}`}>
+                          {getScoreText(analysis.health_score)}
+                        </span>
+                      </div>
 
-                        {/* Tarjeta 2: BMI */}
-                        <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '20px', textAlign: 'center' }}>
-                          <div style={{ color: '#7f8c8d', fontSize: '1.1rem', fontWeight: '600', marginBottom: '10px' }}>Índice Masa Corporal</div>
-                          <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#3498db' }}>{analysis.bmi}</div>
-                          <div style={{ fontSize: '0.9rem', color: '#95a5a6', marginTop: '5px' }}>Categoría: {analysis.bmi_category.replace('_', ' ').toUpperCase()}</div>
-                        </div>
+                      <div className="analysis-card bmi">
+                        <div className="analysis-card-icon" title="Índice de Masa Corporal — relación entre tu peso y tu estatura">⚖️</div>
+                        <div className="analysis-card-label">IMC</div>
+                        <div className="analysis-card-value tooltip-trigger" title={`IMC: ${analysis.bmi} — Categoría: ${analysis.bmi_category.replace('_', ' ')}. Valores normales: 18.5 – 24.9`}>{analysis.bmi}</div>
+                        <div className="analysis-card-desc">Índice de masa corporal</div>
+                        <span className={`analysis-card-badge ${analysis.bmi_category === 'normal' ? '' : analysis.bmi_category === 'obese' ? 'danger' : 'warning'}`}>
+                          {analysis.bmi_category.replace('_', ' ')}
+                        </span>
+                      </div>
 
-                        {/* Tarjeta 3: Calorías */}
-                        <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '20px', textAlign: 'center' }}>
-                          <div style={{ color: '#7f8c8d', fontSize: '1.1rem', fontWeight: '600', marginBottom: '10px' }}>Calorías Sugeridas</div>
-                          <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#9b59b6' }}>{analysis.tdee?.toFixed(0)}</div>
-                          <div style={{ fontSize: '0.9rem', color: '#95a5a6', marginTop: '5px' }}>kcal/día adaptadas a objetivo</div>
-                        </div>
-
+                      <div className="analysis-card calories">
+                        <div className="analysis-card-icon" title="Total de Energía Diaria Expendida — calorías que tu cuerpo necesita al día">🔥</div>
+                        <div className="analysis-card-label">Calorías Diarias</div>
+                        <div className="analysis-card-value tooltip-trigger" title={`TDEE: ${analysis.tdee?.toFixed(0)} kcal/día. Calculado según tu nivel de actividad, peso, altura y objetivo.`}>{analysis.tdee?.toFixed(0)}</div>
+                        <div className="analysis-card-desc">kcal/día según tu objetivo</div>
+                        <span className="analysis-card-badge info">TDEE</span>
                       </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-                      <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '20px', borderLeft: '5px solid #e74c3c', height: '100%' }}>
-                        <h3 style={{ color: '#2c3e50', marginTop: 0 }}>Atención Médica y Alertas</h3>
-                        <div style={{ marginTop: '15px' }}>
+
+                    <div className="analysis-panels">
+                      <div className="analysis-panel alerts">
+                        <h3>🚨 Alertas</h3>
+                        <p className="analysis-panel-subtitle">Atención médica y recomendaciones urgentes</p>
+                        <div className="analysis-panel-content">
                           {analysis.alerts && analysis.alerts.length > 0 ? (
                             analysis.alerts.map((alert, i) => (
-                              <p key={i} style={{ marginBottom: '8px', color: '#333' }}>
+                              <p key={i}>
                                 {alert.priority === 'high' || alert.message.includes('Clínica') ? '🚨' : '⚠️'} {alert.message}
                               </p>
                             ))
                           ) : (
-                            <p style={{ color: '#333' }}>✅ No tienes alertas médicas críticas en este momento.</p>
+                            <p>✅ No tienes alertas médicas críticas en este momento.</p>
                           )}
                         </div>
                       </div>
 
-                      <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '20px', borderLeft: '5px solid #3498db', height: '100%' }}>
-                        <h3 style={{ color: '#2c3e50', marginTop: 0 }}>Objetivos Semanales</h3>
-                        <div style={{ marginTop: '15px' }}>
+                      <div className="analysis-panel goals">
+                        <h3>🎯 Objetivos</h3>
+                        <p className="analysis-panel-subtitle">Metas semanales para mejorar tu bienestar</p>
+                        <div className="analysis-panel-content">
                           {analysis.weekly_goals && analysis.weekly_goals.length > 0 ? (
                             analysis.weekly_goals.map((goal, i) => (
-                              <p key={i} style={{ marginBottom: '8px', color: '#333' }}>🎯 {goal}</p>
+                              <p key={i}>🎯 {goal}</p>
                             ))
                           ) : (
-                            <p style={{ color: '#333' }}>No hay objetivos asignados.</p>
+                            <p>No hay objetivos asignados.</p>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Charts Section */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginTop: '20px' }}>
-                      <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '20px', overflow: 'hidden' }}>
-                        <h3 style={{ color: '#2c3e50', marginTop: 0 }}>Comparativa de Health Score</h3>
+                    <div className="analysis-charts">
+                      <div className="analysis-chart-card">
+                        <h3>Comparativa de Health Score</h3>
+                        <p className="analysis-chart-card-subtitle">Tu puntuación vs promedio poblacional</p>
                         <Plot
                           data={[
                             {
@@ -470,7 +552,7 @@ function Dashboard() {
                               x: ['Health Score'],
                               y: [analysis.health_score],
                               marker: {
-                                color: analysis.health_score < 40 ? '#e74c3c' : analysis.health_score <= 60 ? '#e67e22' : analysis.health_score <= 80 ? '#f1c40f' : '#2ecc71'
+                                color: getScoreColorVar(analysis.health_score)
                               }
                             },
                             {
@@ -478,7 +560,7 @@ function Dashboard() {
                               name: 'Promedio Población',
                               x: ['Health Score'],
                               y: [(profile?.age || 30) < 40 ? 75 : 65],
-                              marker: { color: '#3498db' }
+                              marker: { color: 'var(--info)' }
                             }
                           ]}
                           layout={getChartLayout('Comparativa de Health Score', true)}
@@ -486,8 +568,9 @@ function Dashboard() {
                         />
                       </div>
 
-                      <div style={{ backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', padding: '20px', overflow: 'hidden' }}>
-                        <h3 style={{ color: '#2c3e50', marginTop: 0 }}>Distribución de Macronutrientes</h3>
+                      <div className="analysis-chart-card">
+                        <h3>Distribución de Macronutrientes</h3>
+                        <p className="analysis-chart-card-subtitle">Proporción diaria de proteínas, carbohidratos y grasas</p>
                         {analysis.health_plan?.nutrition?.macronutrients ? (
                           <Plot
                             data={[
@@ -513,7 +596,7 @@ function Dashboard() {
                             style={{ width: '100%' }}
                           />
                         ) : (
-                          <p style={{ color: '#64748b', textAlign: 'center', padding: '40px 0' }}>
+                          <p className="analysis-no-data-msg">
                             No hay datos de macronutrientes disponibles.
                           </p>
                         )}
@@ -523,7 +606,7 @@ function Dashboard() {
                   </div>
                 ) : (
                   <div className="empty-state">
-                    <div style={{ fontSize: '5rem', marginBottom: '20px' }}>📋</div>
+                    <div className="empty-state-icon">📋</div>
                     <h3>Analiza tu salud para empezar</h3>
                     <p>Completa tu perfil y haz clic en "Analizar mi Salud" para obtener recomendaciones personalizadas</p>
                   </div>
@@ -537,24 +620,24 @@ function Dashboard() {
           <div className="tab-content">
             {analysis?.health_plan?.nutrition ? (
               <div>
-                <div className="metrics-grid" style={{ marginBottom: '24px' }}>
-                  <div className="metric-card">
+                <div className="metrics-grid metrics-grid-spaced">
+                  <div className="metric-card" title="Calorías recomendadas diarias para tu objetivo actual">
                     <div className="metric-icon">🔥</div>
                     <div className="metric-label">Calorías Diarias</div>
                     <div className="metric-value">{analysis.health_plan.nutrition.daily_calories}</div>
                     <div className="metric-desc">kcal</div>
                   </div>
-                  <div className="metric-card">
+                  <div className="metric-card" title={`Proteínas: ${analysis.health_plan.nutrition.macronutrients.protein}g — esenciales para músculo y recuperación`}>
                     <div className="metric-icon">🥩</div>
                     <div className="metric-label">Proteínas</div>
                     <div className="metric-value">{analysis.health_plan.nutrition.macronutrients.protein}g</div>
                   </div>
-                  <div className="metric-card">
+                  <div className="metric-card" title={`Carbohidratos: ${analysis.health_plan.nutrition.macronutrients.carbs}g — principal fuente de energía`}>
                     <div className="metric-icon">🍚</div>
                     <div className="metric-label">Carbohidratos</div>
                     <div className="metric-value">{analysis.health_plan.nutrition.macronutrients.carbs}g</div>
                   </div>
-                  <div className="metric-card">
+                  <div className="metric-card" title={`Grasas: ${analysis.health_plan.nutrition.macronutrients.fats}g — necesarias para hormonas y absorción de vitaminas`}>
                     <div className="metric-icon">🥑</div>
                     <div className="metric-label">Grasas</div>
                     <div className="metric-value">{analysis.health_plan.nutrition.macronutrients.fats}g</div>
@@ -562,7 +645,7 @@ function Dashboard() {
                 </div>
 
                 <div className="grid-2">
-                  <div className="card" style={{ overflow: 'hidden' }}>
+                  <div className="card chart-card-overflow">
                     <Plot
                       data={[
                         {
@@ -598,7 +681,7 @@ function Dashboard() {
               </div>
             ) : (
               <div className="empty-state">
-                <div style={{ fontSize: '5rem', marginBottom: '20px' }}>🍽️</div>
+                <div className="empty-state-icon">🍽️</div>
                 <h3>Plan de Nutrición</h3>
                 <p>Realiza un análisis de salud primero para obtener tu plan personalizado</p>
               </div>
@@ -610,9 +693,9 @@ function Dashboard() {
           <div className="tab-content">
             {analysis?.health_plan?.exercise ? (
               <div>
-                <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '24px', marginBottom: '24px' }}>
-                  <div className="card" style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '12px' }}>
+                <div className="exercise-grid">
+                  <div className="card exercise-level-card">
+                    <div className="exercise-level-icon">
                       {analysis.fitness_level === 'beginner' ? '🌱' :
                         analysis.fitness_level === 'advanced' ? '🏆' : '💪'}
                     </div>
@@ -621,17 +704,17 @@ function Dashboard() {
                   </div>
 
                   <div className="metrics-grid">
-                    <div className="metric-card">
+                    <div className="metric-card" title="Actividades cardiovasculares recomendadas para tu nivel">
                       <div className="metric-icon">🏃</div>
                       <div className="metric-label">Cardio</div>
                       <div className="metric-value">{analysis.health_plan.exercise.cardio}</div>
                     </div>
-                    <div className="metric-card">
+                    <div className="metric-card" title="Ejercicios de fuerza y tonificación muscular">
                       <div className="metric-icon">🏋️</div>
                       <div className="metric-label">Fuerza</div>
                       <div className="metric-value">{analysis.health_plan.exercise.strength}</div>
                     </div>
-                    <div className="metric-card">
+                    <div className="metric-card" title="Rutinas de estiramientos y flexibilidad">
                       <div className="metric-icon">🧘</div>
                       <div className="metric-label">Flexibilidad</div>
                       <div className="metric-value">{analysis.health_plan.exercise.flexibility}</div>
@@ -641,7 +724,7 @@ function Dashboard() {
 
                 <div className="card">
                   <h3>🗓️ Plan Semanal</h3>
-                  <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                  <div className="exercise-chart-container">
                     <Plot
                       data={[
                         {
@@ -661,7 +744,7 @@ function Dashboard() {
               </div>
             ) : (
               <div className="empty-state">
-                <div style={{ fontSize: '5rem', marginBottom: '20px' }}>💪</div>
+                <div className="empty-state-icon">💪</div>
                 <h3>Plan de Ejercicio</h3>
                 <p>Realiza un análisis de salud primero para obtener tu rutina personalizada</p>
               </div>
@@ -673,154 +756,123 @@ function Dashboard() {
           <div className="tab-content">
             {analysis ? (
               <div>
-                <div style={{ marginBottom: '24px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <label htmlFor="language-select" style={{ color: 'var(--text-muted)' }}>Idioma del Reporte:</label>
-                      <select
-                        id="language-select"
-                        value={reportLanguage}
-                        onChange={(e) => setReportLanguage(e.target.value)}
-                        style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '0.9rem' }}
-                      >
-                        <option value="es">Español</option>
-                        <option value="en">English</option>
-                      </select>
-                    </div>
+                <div className="reports-header">
+                  <div className="reports-header-inner">
+                    <label htmlFor="language-select">Idioma del Reporte:</label>
+                    <select
+                      id="language-select"
+                      value={reportLanguage}
+                      onChange={(e) => setReportLanguage(e.target.value)}
+                    >
+                      <option value="es">Español</option>
+                      <option value="en">English</option>
+                    </select>
                   </div>
                 </div>
 
                 <div className="grid-2">
-                  {/* Reporte 1: Estado General de Salud */}
-                  <div className="card">
-                    <div style={{ marginBottom: '20px' }}>
+                  <div className="report-card">
+                    <div className="report-card-header">
                       <h3>🏥 Estado General de Salud</h3>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                        Resumen clínico completo para compartir con tu médico.
-                      </p>
+                      <p>Resumen clínico completo para compartir con tu médico.</p>
                     </div>
-
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div className="report-card-buttons">
                       <button
                         className="btn-secondary"
                         onClick={() => downloadReport('/api/reports/health/pdf', reportLanguage === 'es' ? 'reporte_salud.pdf' : 'health_report.pdf')}
-                        style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                       >
                         📥 PDF
                       </button>
                       <button
                         className="btn-secondary"
                         onClick={() => downloadReport('/api/reports/health/excel', reportLanguage === 'es' ? 'reporte_salud.xlsx' : 'health_report.xlsx')}
-                        style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                       >
                         📥 Excel
                       </button>
                       <button
                         className="btn-secondary"
                         onClick={() => downloadReport('/api/reports/health/word', reportLanguage === 'es' ? 'reporte_salud.docx' : 'health_report.docx')}
-                        style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                       >
                         📥 Word
                       </button>
                     </div>
                   </div>
 
-                  {/* Reporte 2: Resumen de Predicciones */}
-                  <div className="card">
-                    <div style={{ marginBottom: '20px' }}>
+                  <div className="report-card">
+                    <div className="report-card-header">
                       <h3>📊 Resumen de Predicciones</h3>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                        Progreso de peso y predicciones a 6 meses.
-                      </p>
+                      <p>Progreso de peso y predicciones a 6 meses.</p>
                     </div>
-
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div className="report-card-buttons">
                       <button
                         className="btn-secondary"
                         onClick={() => downloadReport('/api/reports/predictions/pdf', reportLanguage === 'es' ? 'reporte_predicciones.pdf' : 'predictions_report.pdf')}
-                        style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                       >
                         📥 PDF
                       </button>
                       <button
                         className="btn-secondary"
                         onClick={() => downloadReport('/api/reports/predictions/excel', reportLanguage === 'es' ? 'reporte_predicciones.xlsx' : 'predictions_report.xlsx')}
-                        style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                       >
                         📥 Excel
                       </button>
                       <button
                         className="btn-secondary"
                         onClick={() => downloadReport('/api/reports/predictions/word', reportLanguage === 'es' ? 'reporte_predicciones.docx' : 'predictions_report.docx')}
-                        style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                       >
                         📥 Word
                       </button>
                     </div>
                   </div>
 
-                  {/* Reporte 3: Recetas Sugeridas */}
-                  <div className="card">
-                    <div style={{ marginBottom: '20px' }}>
+                  <div className="report-card">
+                    <div className="report-card-header">
                       <h3>🥗 Recetas Sugeridas</h3>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                        Plan de alimentación personalizado.
-                      </p>
+                      <p>Plan de alimentación personalizado.</p>
                     </div>
-
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div className="report-card-buttons">
                       <button
                         className="btn-secondary"
                         onClick={() => downloadReport('/api/reports/recipes/pdf', reportLanguage === 'es' ? 'reporte_recetas.pdf' : 'recipes_report.pdf')}
-                        style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                       >
                         📥 PDF
                       </button>
                       <button
                         className="btn-secondary"
                         onClick={() => downloadReport('/api/reports/recipes/excel', reportLanguage === 'es' ? 'reporte_recetas.xlsx' : 'recipes_report.xlsx')}
-                        style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                       >
                         📥 Excel
                       </button>
                       <button
                         className="btn-secondary"
                         onClick={() => downloadReport('/api/reports/recipes/word', reportLanguage === 'es' ? 'reporte_recetas.docx' : 'recipes_report.docx')}
-                        style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                       >
                         📥 Word
                       </button>
                     </div>
                   </div>
 
-                  {/* Reporte 4: Plan de Ejercicio */}
-                  <div className="card">
-                    <div style={{ marginBottom: '20px' }}>
+                  <div className="report-card">
+                    <div className="report-card-header">
                       <h3>💪 Plan de Ejercicio</h3>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                        Rutina adaptada a tu nivel de actividad.
-                      </p>
+                      <p>Rutina adaptada a tu nivel de actividad.</p>
                     </div>
-
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div className="report-card-buttons">
                       <button
                         className="btn-secondary"
                         onClick={() => downloadReport('/api/reports/exercise/pdf', reportLanguage === 'es' ? 'reporte_ejercicio.pdf' : 'exercise_report.pdf')}
-                        style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                       >
                         📥 PDF
                       </button>
                       <button
                         className="btn-secondary"
                         onClick={() => downloadReport('/api/reports/exercise/excel', reportLanguage === 'es' ? 'reporte_ejercicio.xlsx' : 'exercise_report.xlsx')}
-                        style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                       >
                         📥 Excel
                       </button>
                       <button
                         className="btn-secondary"
                         onClick={() => downloadReport('/api/reports/exercise/word', reportLanguage === 'es' ? 'reporte_ejercicio.docx' : 'exercise_report.docx')}
-                        style={{ padding: '8px 16px', fontSize: '0.9rem' }}
                       >
                         📥 Word
                       </button>
@@ -830,7 +882,7 @@ function Dashboard() {
               </div>
             ) : (
               <div className="empty-state">
-                <div style={{ fontSize: '5rem', marginBottom: '20px' }}>📑</div>
+                <div className="empty-state-icon">📑</div>
                 <h3>Reportes</h3>
                 <p>Realiza un análisis de salud primero para generar tus reportes personalizados</p>
               </div>
@@ -842,7 +894,7 @@ function Dashboard() {
           <div className="tab-content">
             {loading ? (
               <div className="empty-state">
-                <div style={{ fontSize: '3rem', marginBottom: '20px' }}>⏳</div>
+                <div className="empty-state-icon small">⏳</div>
                 <h3>Cargando predicciones...</h3>
               </div>
             ) : (() => {
@@ -856,30 +908,205 @@ function Dashboard() {
 
               return predData ? (
                 <div>
-                  {/* Latest Prediction */}
-                  <div className="card" style={{ marginBottom: '24px' }}>
+                  {analysis?.ml_prediction?.predicted_class && (
+                    <div className="ml-prediction-card">
+                      <div className="ml-prediction-header">
+                        <span className="ml-prediction-icon">🤖</span>
+                        <h3>Clasificación ML (XGBoost)</h3>
+                      </div>
+                      <div className="ml-prediction-body">
+                        <div className="ml-prediction-main">
+                          <div className="ml-predicted-class">
+                            <span className="ml-label">Categoría Predicha</span>
+                            <span className="ml-value">{analysis.ml_prediction.predicted_class.replace(/_/g, ' ')}</span>
+                          </div>
+                          <div className="ml-confidence">
+                            <span className="ml-label">Confianza</span>
+                            <div className="ml-confidence-bar-container">
+                              <div className="ml-confidence-bar" style={{ width: `${analysis.ml_prediction.confidence}%` }}></div>
+                            </div>
+                            <span className="ml-confidence-text">{analysis.ml_prediction.confidence.toFixed(1)}%</span>
+                          </div>
+                        </div>
+                        <div className="ml-prediction-details">
+                          <span className="ml-model-badge">{analysis.ml_prediction.model_used}</span>
+                          <span className="ml-inference-time">{analysis.ml_prediction.inference_time_ms.toFixed(2)}ms</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {analysis?.xai && (
+                    <div className="xai-section">
+                      {/* ¿Por qué la IA tomó esta decisión? */}
+                      <div className="xai-card xai-card-explanation">
+                        <div className="xai-card-header">
+                          <span className="xai-card-icon">💡</span>
+                          <h3>¿Por qué la IA tomó esta decisión?</h3>
+                        </div>
+                        <div className="xai-card-body">
+                          <p className="xai-summary">{analysis.xai.summary}</p>
+                          <p className="xai-main-reason">{analysis.xai.main_reason}</p>
+                        </div>
+                      </div>
+
+                      {/* Nivel de confianza */}
+                      <div className="xai-card xai-card-confidence">
+                        <div className="xai-card-header">
+                          <span className="xai-card-icon">🎯</span>
+                          <h3>Nivel de Confianza</h3>
+                        </div>
+                        <div className="xai-card-body">
+                          <p className="xai-confidence-text">{analysis.xai.confidence_text}</p>
+                          {analysis.ml_prediction?.predicted_class && (
+                            <div className="xai-confidence-meter">
+                              <div className="xai-confidence-bar-bg">
+                                <div
+                                  className="xai-confidence-bar-fill"
+                                  style={{
+                                    width: `${analysis.ml_prediction.confidence}%`,
+                                    background: analysis.ml_prediction.confidence >= 95
+                                      ? 'var(--secondary)' : analysis.ml_prediction.confidence >= 80
+                                      ? 'var(--primary)' : analysis.ml_prediction.confidence >= 60
+                                      ? 'var(--accent)' : 'var(--danger)',
+                                  }}
+                                />
+                              </div>
+                              <span className="xai-confidence-value">
+                                {analysis.ml_prediction.confidence.toFixed(1)}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Factores más importantes */}
+                      {analysis.xai.important_features?.length > 0 && (
+                        <div className="xai-card xai-card-features">
+                          <div className="xai-card-header">
+                            <span className="xai-card-icon">📊</span>
+                            <h3>Factores Más Importantes</h3>
+                          </div>
+                          <div className="xai-card-body">
+                            {analysis.xai.important_features.map((feat, i) => (
+                              <div className="xai-feature-row" key={i}>
+                                <span className="xai-feature-name">{feat.display_name}</span>
+                                <div className="xai-feature-bar-container">
+                                  <div
+                                    className="xai-feature-bar"
+                                    style={{ width: `${Math.max(feat.importance * 100 * 1.3, 2)}%` }}
+                                  />
+                                </div>
+                                <span className={`xai-feature-badge xai-feature-${feat.level}`}>
+                                  {feat.level === 'high' ? 'Alto' : feat.level === 'medium' ? 'Medio' : 'Bajo'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Interpretación clínica */}
+                      <div className="xai-card xai-card-clinical">
+                        <div className="xai-card-header">
+                          <span className="xai-card-icon">🩺</span>
+                          <h3>Interpretación Clínica</h3>
+                        </div>
+                        <div className="xai-card-body">
+                          <p>{analysis.xai.risk_explanation}</p>
+                          {analysis.xai.recommendations?.length > 0 && (
+                            <div className="xai-recommendations">
+                              <strong>Recomendaciones:</strong>
+                              <ul>
+                                {analysis.xai.recommendations.map((rec, i) => (
+                                  <li key={i}>{rec}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Escenarios futuros */}
+                      <div className="xai-scenarios-grid">
+                        {analysis.xai.scenario_follow && (
+                          <div className="xai-card xai-card-scenario xai-card-follow">
+                            <div className="xai-card-header">
+                              <span className="xai-card-icon">✅</span>
+                              <h3>{analysis.xai.scenario_follow.title}</h3>
+                            </div>
+                            <div className="xai-card-body">
+                              <div className="xai-scenario-metrics">
+                                <div className="xai-scenario-metric">
+                                  <span className="xai-scenario-label">Peso proyectado</span>
+                                  <span className="xai-scenario-value">{analysis.xai.scenario_follow.projected_weight_kg} kg</span>
+                                </div>
+                                <div className="xai-scenario-metric">
+                                  <span className="xai-scenario-label">IMC proyectado</span>
+                                  <span className="xai-scenario-value">{analysis.xai.scenario_follow.projected_bmi}</span>
+                                </div>
+                                <div className="xai-scenario-metric">
+                                  <span className="xai-scenario-label">Categoría esperada</span>
+                                  <span className="xai-scenario-value">{analysis.xai.scenario_follow.projected_category}</span>
+                                </div>
+                              </div>
+                              <p className="xai-scenario-text">{analysis.xai.scenario_follow.evolution_text}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {analysis.xai.scenario_ignore && (
+                          <div className="xai-card xai-card-scenario xai-card-ignore">
+                            <div className="xai-card-header">
+                              <span className="xai-card-icon">⚠️</span>
+                              <h3>{analysis.xai.scenario_ignore.title}</h3>
+                            </div>
+                            <div className="xai-card-body">
+                              <div className="xai-scenario-metrics">
+                                <div className="xai-scenario-metric">
+                                  <span className="xai-scenario-label">Peso estimado</span>
+                                  <span className="xai-scenario-value">{analysis.xai.scenario_ignore.projected_weight_kg} kg</span>
+                                </div>
+                                <div className="xai-scenario-metric">
+                                  <span className="xai-scenario-label">IMC estimado</span>
+                                  <span className="xai-scenario-value">{analysis.xai.scenario_ignore.projected_bmi}</span>
+                                </div>
+                                <div className="xai-scenario-metric">
+                                  <span className="xai-scenario-label">Categoría estimada</span>
+                                  <span className="xai-scenario-value">{analysis.xai.scenario_ignore.projected_category}</span>
+                                </div>
+                              </div>
+                              <p className="xai-scenario-text">{analysis.xai.scenario_ignore.risk_text}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="prediction-card">
                     <h3>📊 Última Predicción</h3>
                     <div className="metrics-grid">
-                      <div className="metric-card">
+                      <div className="metric-card" title="Tu peso actual al momento del análisis">
                         <div className="metric-icon">📈</div>
                         <div className="metric-label">Peso Inicial</div>
                         <div className="metric-value">{Math.round(predData.profile_snapshot?.weight * 10) / 10} kg</div>
                       </div>
-                      <div className="metric-card">
+                      <div className="metric-card" title="Peso proyectado a 2 semanas según el modelo predictivo">
                         <div className="metric-icon">🔮</div>
                         <div className="metric-label">2 Semanas</div>
                         <div className="metric-value">
                           {predData.predictions_data?.predictions?.['2_weeks']?.weight_kg} kg
                         </div>
                       </div>
-                      <div className="metric-card">
+                      <div className="metric-card" title="Peso proyectado a 1 mes según el modelo predictivo">
                         <div className="metric-icon">🔮</div>
                         <div className="metric-label">1 Mes</div>
                         <div className="metric-value">
                           {predData.predictions_data?.predictions?.['1_month']?.weight_kg} kg
                         </div>
                       </div>
-                      <div className="metric-card">
+                      <div className="metric-card" title="Peso proyectado a 6 meses según el modelo predictivo">
                         <div className="metric-icon">🔮</div>
                         <div className="metric-label">6 Meses</div>
                         <div className="metric-value">
@@ -888,7 +1115,7 @@ function Dashboard() {
                       </div>
                     </div>
 
-                    <div style={{ marginTop: '20px' }}>
+                    <div className="prediction-chart-container">
                       <Plot
                         data={[
                           {
@@ -912,9 +1139,8 @@ function Dashboard() {
                     </div>
                   </div>
 
-                  {/* Timeline & Actual Progress */}
                   {timelineData?.has_predictions && (
-                    <div className="card" style={{ marginBottom: '24px' }}>
+                    <div className="prediction-card">
                       <h3>📅 Progreso Real vs Predicción</h3>
                       {timelineData.actual_progress && timelineData.actual_progress.length > 0 ? (
                         <Plot
@@ -947,23 +1173,22 @@ function Dashboard() {
                           style={{ width: '100%' }}
                         />
                       ) : (
-                        <div className="empty-state" style={{ padding: '40px 20px' }}>
+                        <div className="empty-state prediction-empty">
                           <p>No hay progreso registrado aún. Agrega registros diarios para ver la comparación!</p>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Stats */}
                   {statsData?.has_stats && (
                     <div className="grid-2">
                       <div className="card">
                         <h3>🎯 Precisión de Predicciones</h3>
-                        <div style={{ textAlign: 'center', padding: '20px' }}>
-                          <div style={{ fontSize: '3rem', fontWeight: 'bold', color: '#3b82f6' }}>
+                        <div className="prediction-stat-center">
+                          <div className="prediction-accuracy-value">
                             {statsData.average_accuracy}%
                           </div>
-                          <div style={{ color: '#64748b', marginTop: '8px' }}>Precisión promedio</div>
+                          <div className="prediction-accuracy-label">Precisión promedio</div>
                         </div>
                       </div>
                       <div className="card">
@@ -971,16 +1196,16 @@ function Dashboard() {
                         {statsData.details?.map((stat, i) => (
                           <div key={i} className="goal-item">
                             <div>
-                              <div style={{ fontWeight: 'bold' }}>
+                              <div className="prediction-stat-value">
                                 {new Date(stat.date).toLocaleDateString('es-ES')}
                               </div>
                               {stat.accuracy?.['2_weeks'] && (
-                                <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                                <div className="prediction-stat-detail">
                                   2 Semanas: {stat.accuracy['2_weeks'].accuracy_pct}%
                                 </div>
                               )}
                               {stat.accuracy?.['1_month'] && (
-                                <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
+                                <div className="prediction-stat-detail">
                                   1 Mes: {stat.accuracy['1_month'].accuracy_pct}%
                                 </div>
                               )}
@@ -994,7 +1219,7 @@ function Dashboard() {
                 </div>
               ) : (
                 <div className="empty-state">
-                  <div style={{ fontSize: '5rem', marginBottom: '20px' }}>📈</div>
+                  <div className="empty-state-icon">📈</div>
                   <h3>Predicciones de Salud</h3>
                   <p>Realiza un análisis de salud primero para generar predicciones personalizadas!</p>
                 </div>

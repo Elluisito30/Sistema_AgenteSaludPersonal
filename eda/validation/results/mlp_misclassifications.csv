@@ -1,0 +1,5 @@
+true_class,n_disagreements,mlp_wrong_when_disagree,xgb_wrong_when_disagree
+Normal_Weight,15,4,11
+Overweight_Level_I,5,5,0
+Obesity_Type_I,2,0,2
+Overweight_Level_II,1,1,0

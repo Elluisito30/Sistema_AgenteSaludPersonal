@@ -38,6 +38,8 @@ services:
       - API_HOST=0.0.0.0
     volumes:
       - ./backend.py:/app/backend.py
+      - ./backend/services:/app/services
+      - ./eda/models:/app/models
       - ./.env:/app/.env
     networks:
       - health-ai-network

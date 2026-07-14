@@ -21,6 +21,10 @@ from contextlib import contextmanager
 import json
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
+from services.recommendation_engine import RecommendationEngine
+from services.ml.prediction_service import prediction_service
+from services.xai_service import xai_service
+
 # ============================================
 # CONFIGURACIÓN
 # ============================================
@@ -157,6 +161,10 @@ class HealthProfile(BaseModel):
     health_goals: List[str] = []
     chronic_diseases: List[str] = []
     genetic_risk_factors: List[str] = []
+    family_history: Optional[bool] = False
+    favc: Optional[str] = 'Sometimes'
+    fcvc: Optional[float] = 2.0
+    ch2o: Optional[float] = 2.0
 
 class DailyProgress(BaseModel):
     date: str
@@ -309,27 +317,27 @@ def create_profile(profile: HealthProfile, user_id: int = Depends(verify_token))
                     age = %s, gender = %s, height_cm = %s, weight_kg = %s,
                     activity_level = %s, sleep_hours = %s, smokes = %s,
                     has_chronic_conditions = %s, chronic_conditions_detail = %s,
-                    genetics_risk = %s, health_goals = %s, 
-                    chronic_diseases = %s, genetic_risk_factors = %s, updated_at = NOW()
+                    health_goals = %s, family_history = %s, favc = %s,
+                    fcvc = %s, ch2o = %s, updated_at = NOW()
                 WHERE user_id = %s
             """, (profile.age, profile.gender, profile.height_cm, profile.weight_kg,
                   profile.activity_level, profile.sleep_hours, profile.smokes,
                   profile.has_chronic_conditions, profile.chronic_conditions_detail,
-                  profile.genetics_risk, profile.health_goals, 
-                  profile.chronic_diseases, profile.genetic_risk_factors, user_id))
+                  profile.health_goals, profile.family_history, profile.favc,
+                  profile.fcvc, profile.ch2o, user_id))
         else:
             # Insertar
             cursor.execute("""
                 INSERT INTO health_profiles 
                 (user_id, age, gender, height_cm, weight_kg, activity_level, 
                  sleep_hours, smokes, has_chronic_conditions, chronic_conditions_detail, 
-                 genetics_risk, health_goals, chronic_diseases, genetic_risk_factors)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 health_goals, family_history, favc, fcvc, ch2o)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (user_id, profile.age, profile.gender, profile.height_cm, profile.weight_kg,
                   profile.activity_level, profile.sleep_hours, profile.smokes,
                   profile.has_chronic_conditions, profile.chronic_conditions_detail,
-                  profile.genetics_risk, profile.health_goals,
-                  profile.chronic_diseases, profile.genetic_risk_factors))
+                  profile.health_goals, profile.family_history, profile.favc,
+                  profile.fcvc, profile.ch2o))
     
     return {"message": "Perfil actualizado exitosamente"}
 
@@ -387,8 +395,18 @@ def analyze_health(user_id: int = Depends(verify_token)):
     has_chronic = profile.get('has_chronic_conditions', False)
     genetics_risk = profile.get('genetics_risk', 'low')
     goals = profile.get('health_goals', [])
+    family_history = profile.get('family_history', False)
+    favc = profile.get('favc', 'Sometimes')
+    fcvc = profile.get('fcvc', 2.0)
+    ch2o = profile.get('ch2o', 2.0)
     chronic_diseases = profile.get('chronic_diseases', [])
     if chronic_diseases is None: chronic_diseases = []
+    if not chronic_diseases:
+        detail = (profile.get('chronic_conditions_detail') or '').lower()
+        disease_keywords = ['diabetes', 'hipertens', 'colesterol', 'cardio', 'asma', 'renal', 'artrosis', 'artritis']
+        for kw in disease_keywords:
+            if kw in detail:
+                chronic_diseases.append(kw.replace('hipertens', 'hipertension'))
     genetic_risk_factors = profile.get('genetic_risk_factors', [])
     if genetic_risk_factors is None: genetic_risk_factors = []
 
@@ -421,215 +439,85 @@ def analyze_health(user_id: int = Depends(verify_token)):
     tdee = round(bmr * activity_multipliers.get(activity, 1.55), 2)
 
     # ==========================================
-    # LÓGICA DE HEALTH SCORE REFACTORIZADA
+    # PREDICCIÓN ML (XGBoost)
     # ==========================================
-    score = 100
-    has_penalties = False
-    
-    # 1. Puntuación Base por IMC
-    if 25 <= bmi < 30:
-        score -= 15
-        has_penalties = True
-    elif 30 <= bmi < 35:
-        score -= 25
-        has_penalties = True
-    elif bmi >= 35:
-        score -= 40
-        has_penalties = True
-    elif 16 <= bmi < 18.5:
-        score -= 20
-        has_penalties = True
-    elif bmi < 16:
-        score -= 35
-        has_penalties = True
-        
-    # 2. Penalizaciones Acumulativas
-    if smokes:
-        score -= 20
-        has_penalties = True
-        
-    has_diabetes = False
-    for disease in chronic_diseases:
-        d = disease.lower()
-        if "diabetes" in d:
-            score -= 25
-            has_diabetes = True
-            has_penalties = True
-        elif "hipertensión" in d or "hipertension" in d:
-            score -= 15
-            has_penalties = True
-        elif "colesterol" in d:
-            score -= 10
-            has_penalties = True
+    ml_prediction = prediction_service.predict_obesity(
+        age=age,
+        gender=gender,
+        height_cm=height,
+        weight_kg=weight,
+        smokes=smokes,
+        activity_level=activity,
+        family_history=family_history,
+        favc=favc,
+        fcvc=fcvc,
+        ch2o=ch2o,
+    )
 
-    if len(genetic_risk_factors) > 0:
-        score -= 10
-        has_penalties = True
+    # ==========================================
+    # MOTOR DE INTERPRETACIÓN CLÍNICA
+    # ==========================================
+    engine = RecommendationEngine()
+    engine_result = engine.analyze(
+        age=age,
+        gender=gender,
+        weight_kg=weight,
+        height_cm=height,
+        activity_level=activity,
+        sleep_hours=sleep,
+        smokes=smokes,
+        chronic_diseases=chronic_diseases,
+        genetic_risk_factors=genetic_risk_factors,
+        health_goals=goals,
+        bmi=bmi,
+        bmi_category=bmi_category,
+        bmr=bmr,
+        tdee=tdee,
+        ml_prediction=ml_prediction,
+    )
 
-    if sleep < 6:
-        score -= 8
-        has_penalties = True
-    elif sleep > 9:
-        score -= 3
-        has_penalties = True
+    score = engine_result["health_score"]
+    health_risk = engine_result["health_risk"]
+    fitness_level = engine_result["fitness_level"]
+    alerts = engine_result["alerts"]
+    weekly_goals = engine_result["weekly_goals"]
+    health_plan = engine_result["health_plan"]
+    predictions = engine_result["predictions"]
+    clinical_summary = engine_result.get("clinical_summary")
 
-    if activity in ["sedentary", "none", "sedentario"]:
-        score -= 10
-        has_penalties = True
-
-    # 3. Limitadores de Puntaje Máximo
-    if bmi < 16 or bmi >= 35:
-        if score > 40:
-            score = 40
-            
-    if has_diabetes and smokes:
-        if score > 45:
-            score = 45
-
-    score = max(0, min(100, score))
-    
-    # 4. Clasificación Final
-    if score <= 20:
-        health_risk = "Crítico - Requiere atención médica URGENTE"
-    elif score <= 40:
-        health_risk = "Alto Riesgo - Consulta a tu médico de cabecera"
-    elif score <= 60:
-        health_risk = "Riesgo Moderado - Mejora tus hábitos"
-    elif score <= 80:
-        health_risk = "Aceptable - Mantén tus hábitos saludables"
-    else:
-        if has_penalties:
-            health_risk = "Aceptable - Mantén tus hábitos saludables"
-        else:
-            health_risk = "Buen estado - Sigue así"
-
-    if score >= 60:
-        fitness_level = "intermediate"
-    else:
-        fitness_level = "beginner"
-        
-    # 5. Lógica adaptativa de Objetivos
-    def validate_user_goals(current_goals, current_bmi):
-        adjusted = list(current_goals)
-        alerts_goal = []
-        if current_bmi < 18.5:
-            if "weight_loss" in adjusted:
-                adjusted.remove("weight_loss")
-                alerts_goal.append({"priority": "high", "message": "Tu objetivo de pérdida de peso fue bloqueado debido a tu bajo peso."})
-            if "muscle_gain" not in adjusted:
-                adjusted.append("muscle_gain")
-        elif current_bmi > 30:
-            if "muscle_gain" in adjusted:
-                adjusted.remove("muscle_gain")
-                alerts_goal.append({"priority": "medium", "message": "Priorizamos la pérdida de peso sobre ganancia muscular debido a tu IMC."})
-            if "weight_loss" not in adjusted:
-                adjusted.append("weight_loss")
-        return adjusted, alerts_goal
-
-    goals, goal_alerts = validate_user_goals(goals, bmi)
-
-    # Alerts
-    alerts = []
-    alerts.extend(goal_alerts)
-    if bmi >= 30:
-        alerts.append({"priority": "high", "message": "Tu BMI indica obesidad. Consulta a un especialista."})
-    elif bmi >= 25:
-        alerts.append({"priority": "medium", "message": "Tu BMI indica sobrepeso. Considera ajustar tu dieta."})
-    if smokes:
-        alerts.append({"priority": "high", "message": "Fumar aumenta significativamente tu riesgo de salud."})
-        
-    # Nuevas recomendaciones por enfermedades
-    for disease in chronic_diseases:
-        disease_lower = disease.lower()
-        if "diabetes" in disease_lower:
-            alerts.append({"priority": "high", "message": "🚨 Alerta Clínica: Plan de comidas bajo en carbohidratos recomendado debido a la Diabetes."})
-        elif "hipertensión" in disease_lower or "hipertension" in disease_lower:
-            alerts.append({"priority": "high", "message": "🚨 Alerta Clínica: Evita el exceso de sodio y mantén chequeos de presión arterial por tu Hipertensión."})
-        elif "colesterol" in disease_lower:
-            alerts.append({"priority": "high", "message": "🚨 Alerta Clínica: Reduce el consumo de grasas saturadas debido al Colesterol alto."})
-        else:
-            alerts.append({"priority": "high", "message": f"🚨 Alerta Clínica: Sigue las indicaciones médicas para: {disease}."})
-            
-    if len(genetic_risk_factors) > 0:
-        alerts.append({"priority": "medium", "message": "⚠️ Tienes factores de riesgo genético. Se recomiendan chequeos preventivos regulares."})
-
-    if sleep < 6:
-        alerts.append({"priority": "medium", "message": "Duermes menos de 6 horas. Intenta mejorar tu descanso."})
-    if activity == "sedentary":
-        alerts.append({"priority": "medium", "message": "Tu nivel de actividad es muy bajo. Intenta caminar 30 min al día."})
-
-    # Weekly goals
-    weekly_goals = []
-    goal_templates = {
-        "weight_loss": "Reducir 500 calorías diarias",
-        "muscle_gain": "Aumentar consumo de proteína a 1.6g/kg",
-        "better_sleep": "Dormir al menos 7-8 horas diarias",
-        "stress_reduction": "Practicar 10 min de meditación al día",
-        "energy_boost": "Hacer ejercicio 30 min diarios",
-        "general_wellness": "Tomar 2 litros de agua al día"
-    }
-    for g in goals:
-        if g in goal_templates:
-            weekly_goals.append(goal_templates[g])
-    if not weekly_goals:
-        weekly_goals = ["Mantener una dieta balanceada", "Ejercicio 3 veces por semana", "Dormir al menos 7 horas"]
-
-    # Nutrition plan adaptativo
-    daily_calories_diff = 0
-    if bmi < 18.5 and "muscle_gain" in goals:
-        daily_calories_diff = 500  # Forzar superávit calórico
-    elif "weight_loss" in goals:
-        daily_calories_diff = -300
-
-    protein_ratio = 0.3 if "muscle_gain" in goals else 0.25
-    carbs_ratio = 0.4 if "weight_loss" not in goals else 0.35
-    fats_ratio = 0.3 if "weight_loss" not in goals else 0.4
-    
-    # Exercise plan based on activity level and goals
-    exercise_plans = {
-        "sedentary": {"cardio": "20 min, 3 días/semana", "strength": "15 min, 2 días/semana", "flexibility": "10 min/día"},
-        "light": {"cardio": "30 min, 3 días/semana", "strength": "20 min, 2 días/semana", "flexibility": "10 min/día"},
-        "moderate": {"cardio": "40 min, 4 días/semana", "strength": "25 min, 3 días/semana", "flexibility": "10 min/día"},
-        "active": {"cardio": "50 min, 5 días/semana", "strength": "30 min, 3 días/semana", "flexibility": "15 min/día"},
-        "very_active": {"cardio": "60 min, 6 días/semana", "strength": "35 min, 4 días/semana", "flexibility": "15 min/día"}
-    }
-    
-    health_plan = {
-        "nutrition": {
-            "daily_calories": int(tdee + daily_calories_diff),
-            "macronutrients": {
-                "protein": int(tdee * protein_ratio / 4),
-                "carbs": int(tdee * carbs_ratio / 4),
-                "fats": int(tdee * fats_ratio / 9)
-            },
-            "recommendations": [
-                "Prioriza alimentos no procesados" if "weight_loss" in goals else "Mantén una dieta variada",
-                "Aumenta consumo de fibra",
-                "Distribuye comidas en 4-5 porciones al día"
-            ]
-        },
-        "exercise": exercise_plans.get(activity, exercise_plans["moderate"])
+    ml_prediction = ml_prediction or {}
+    ml_prediction_result = {
+        "predicted_class": ml_prediction.get("predicted_class"),
+        "confidence": ml_prediction.get("confidence", 0.0),
+        "model_used": ml_prediction.get("model_used", "none"),
+        "inference_time_ms": ml_prediction.get("inference_time_ms", 0.0),
+        "probabilities": ml_prediction.get("probabilities", {}),
     }
 
-    # Predictions placeholder
-    weight_diff = 0
-    if "weight_loss" in goals:
-        weight_diff = -0.5
-    elif "muscle_gain" in goals:
-        weight_diff = 0.3
-        
-    predictions = {
-        "predictions_data": {
-            "predictions": {
-                "2_weeks": {"weight_kg": round(weight + (weight_diff * 2), 1)},
-                "1_month": {"weight_kg": round(weight + (weight_diff * 4), 1)},
-                "6_months": {"weight_kg": round(weight + (weight_diff * 24), 1)}
-            }
-        },
-        "model_used": "local_calculator_v1",
-        "confidence_score": 0.85,
-        "is_active": True
-    }
+    print(f"ML prediction: class={ml_prediction_result['predicted_class']} confidence={ml_prediction_result['confidence']}% model={ml_prediction_result['model_used']} inference={ml_prediction_result['inference_time_ms']}ms")
+
+    # XAI explanation
+    try:
+        xai_result = xai_service.generate_xai_explanation(
+            age=age,
+            gender=gender,
+            height_cm=height,
+            weight_kg=weight,
+            bmi=bmi,
+            bmi_category=bmi_category,
+            activity_level=activity,
+            smokes=smokes,
+            ml_prediction=ml_prediction,
+            health_score=score,
+            severity=engine_result.get("health_risk_level", "medium"),
+            clinical_summary=clinical_summary,
+            alerts=alerts,
+            predictions=predictions,
+            weekly_goals=weekly_goals,
+        )
+    except Exception as e:
+        print(f"XAI explanation error: {e}")
+        xai_result = None
 
     analysis_result = {
         "health_score": score,
@@ -643,8 +531,11 @@ def analyze_health(user_id: int = Depends(verify_token)):
         "alerts": alerts,
         "weekly_goals": weekly_goals,
         "next_checkup": (datetime.now() + timedelta(days=30)).date().isoformat(),
-        "confidence_score": 0.85,
+        "confidence_score": predictions.get("confidence_score", 0.85),
         "predictions": predictions,
+        "ml_prediction": ml_prediction_result,
+        "clinical_summary": clinical_summary,
+        "xai": xai_result,
         "analyzed_at": datetime.now().isoformat()
     }
 
@@ -664,7 +555,8 @@ def analyze_health(user_id: int = Depends(verify_token)):
                 health_risk, fitness_level, json.dumps(health_plan),
                 json.dumps(alerts), weekly_goals,
                 (datetime.now() + timedelta(days=30)).date(),
-                0.85, json.dumps({}), json.dumps({})
+                predictions.get("confidence_score", 0.85),
+                json.dumps({}), json.dumps({})
             ))
             cursor.execute("SELECT LASTVAL()")
             analysis_id = cursor.fetchone()['lastval']
@@ -689,7 +581,7 @@ def analyze_health(user_id: int = Depends(verify_token)):
     except Exception as e:
         print(f"⚠️ Error guardando análisis en BD: {e}")
 
-    print(f"✅ Análisis local completado - health_score: {score}")
+    print(f"✅ Análisis completado (RecommendationEngine) - health_score: {score}")
     return analysis_result
 
 # ============================================

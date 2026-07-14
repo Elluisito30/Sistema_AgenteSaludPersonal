@@ -1,0 +1,5 @@
+model,group,n_samples,mean_entropy,std_entropy,median_entropy
+MLP,correct,302,0.085177,0.153115,0.02176
+MLP,incorrect,15,0.525784,0.168607,0.606027
+XGBoost,correct,299,0.100642,0.19988,0.019392
+XGBoost,incorrect,18,0.529402,0.292416,0.598905

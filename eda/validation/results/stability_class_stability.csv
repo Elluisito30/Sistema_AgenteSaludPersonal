@@ -1,0 +1,8 @@
+class,mean_accuracy,std_accuracy,min_accuracy,max_accuracy,cv_folds,stability_cv
+Insufficient_Weight,0.984127,0.02052,0.925926,1.0,30,0.020851
+Normal_Weight,0.994171,0.013037,0.964286,1.0,30,0.013113
+Obesity_Type_I,0.990529,0.015292,0.942857,1.0,30,0.015438
+Obesity_Type_II,0.985402,0.020662,0.933333,1.0,30,0.020968
+Obesity_Type_III,0.995928,0.010383,0.96875,1.0,30,0.010425
+Overweight_Level_I,0.956322,0.037704,0.862069,1.0,30,0.039426
+Overweight_Level_II,0.987356,0.020849,0.931034,1.0,30,0.021116
