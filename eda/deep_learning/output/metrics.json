@@ -1,0 +1,132 @@
+{
+  "accuracy": 0.936909,
+  "balanced_accuracy": 0.934574,
+  "f1_macro": 0.934256,
+  "precision_macro": 0.935177,
+  "recall_macro": 0.934574,
+  "roc_auc_ovr": 0.995933,
+  "confusion_matrix": [
+    [
+      40,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      5,
+      35,
+      0,
+      0,
+      0,
+      3,
+      0
+    ],
+    [
+      0,
+      0,
+      52,
+      1,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      44,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      1,
+      48,
+      0,
+      0
+    ],
+    [
+      0,
+      4,
+      0,
+      0,
+      0,
+      38,
+      1
+    ],
+    [
+      0,
+      0,
+      2,
+      0,
+      0,
+      1,
+      40
+    ]
+  ],
+  "classification_report": {
+    "Insufficient_Weight": {
+      "precision": 0.8888888888888888,
+      "recall": 0.975609756097561,
+      "f1-score": 0.9302325581395349,
+      "support": 41.0
+    },
+    "Normal_Weight": {
+      "precision": 0.875,
+      "recall": 0.813953488372093,
+      "f1-score": 0.8433734939759037,
+      "support": 43.0
+    },
+    "Obesity_Type_I": {
+      "precision": 0.9454545454545454,
+      "recall": 0.9811320754716981,
+      "f1-score": 0.9629629629629629,
+      "support": 53.0
+    },
+    "Obesity_Type_II": {
+      "precision": 0.9565217391304348,
+      "recall": 0.9777777777777777,
+      "f1-score": 0.967032967032967,
+      "support": 45.0
+    },
+    "Obesity_Type_III": {
+      "precision": 1.0,
+      "recall": 0.9795918367346939,
+      "f1-score": 0.9896907216494846,
+      "support": 49.0
+    },
+    "Overweight_Level_I": {
+      "precision": 0.9047619047619048,
+      "recall": 0.8837209302325582,
+      "f1-score": 0.8941176470588236,
+      "support": 43.0
+    },
+    "Overweight_Level_II": {
+      "precision": 0.975609756097561,
+      "recall": 0.9302325581395349,
+      "f1-score": 0.9523809523809523,
+      "support": 43.0
+    },
+    "accuracy": 0.9369085173501577,
+    "macro avg": {
+      "precision": 0.9351766906190478,
+      "recall": 0.9345740604037024,
+      "f1-score": 0.9342559004572328,
+      "support": 317.0
+    },
+    "weighted avg": {
+      "precision": 0.937154558458555,
+      "recall": 0.9369085173501577,
+      "f1-score": 0.936442904778992,
+      "support": 317.0
+    }
+  },
+  "num_test_samples": 317,
+  "num_classes": 7
+}

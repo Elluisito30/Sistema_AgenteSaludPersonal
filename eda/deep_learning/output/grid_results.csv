@@ -1,0 +1,4 @@
+name,hidden_units,optimizer,activation,regularization,val_accuracy,best_epoch,train_time_s
+1layer_adam_leaky_relu_dropout,[128],adam,leaky_relu,dropout,0.9558359384536743,71,25.41
+1layer_adam_relu_dropout,[128],adam,relu,dropout,0.9432176947593689,74,31.66
+1layer_adam_relu_batch_norm,[128],adam,relu,batch_norm,0.9242902398109436,62,26.4

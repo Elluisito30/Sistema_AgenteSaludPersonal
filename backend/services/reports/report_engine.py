@@ -611,7 +611,7 @@ class ReportEngine:
 
         predicted_class = ml.get("predicted_class") or ""
         confidence = ml.get("confidence", 0)
-        ml_available = bool(predicted_class) or confidence > 0
+        ml_available = bool(predicted_class)
 
         if not ml_available:
             return {
