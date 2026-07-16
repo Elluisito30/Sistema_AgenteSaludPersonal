@@ -77,6 +77,14 @@
     "analyzing": "Analizando...",
     "analyze": "🤖 Analizar mi Salud"
   },
+  "dashboard": {
+    "profileSummary": "Datos de tu perfil",
+    "profileReadonlyHint": "Estos datos vienen de tu perfil (Onboarding / Mi Perfil). Aquí solo se usan para generar el análisis; para editarlos ve a Mi Perfil.",
+    "noProfile": "Aún no tienes un perfil de salud. Complétalo primero para poder analizar.",
+    "goToProfile": "Ir a Mi Perfil",
+    "editProfile": "✏️ Editar perfil",
+    "noGoals": "Sin objetivos definidos"
+  },
   "goals": {
     "weightLoss": "📉 Pérdida de peso",
     "muscleGain": "💪 Ganancia muscular",
@@ -365,6 +373,9 @@
     "water": "Litros de agua diarios",
     "analyzing": "Analizando tu salud...",
     "profileSaved": "¡Perfil guardado exitosamente!",
+    "noGoalsSelected": "Ninguno seleccionado",
+    "years": "años",
+    "sleepLabel": "sueño",
     "errorSaving": "Error al guardar. Intenta de nuevo."
   },
   "journey": {
@@ -392,6 +403,13 @@
     "logLunch": "Registrar Almuerzo",
     "logDinner": "Registrar Cena",
     "viewReports": "Ver Reportes",
+    "profileReadyTitle": "Tu perfil está listo",
+    "profileReadyDesc": "Completaste la pasarela. Ve al Dashboard para analizar tu salud con los datos ya cargados (solo lectura).",
+    "goToAnalyze": "Ir a Analizar mi Salud",
+    "repeatOnboarding": "Volver a la pasarela",
+    "analysisReadyTitle": "Tu análisis ya está listo",
+    "analysisReadyDesc": "Ya tienes un análisis generado. Ve al Dashboard para ver tus resultados. Si necesitas cambiar datos, usa Mi Perfil.",
+    "goToDashboard": "Ir al Dashboard",
     "weeklyGoals": "Objetivos Semanales",
     "noWeeklyGoals": "Aún no tienes objetivos semanales.",
     "completeAnalysis": "Completa tu análisis para obtener recomendaciones personalizadas.",

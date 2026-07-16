@@ -70,10 +70,12 @@ def generate_health_excel(report_data, language="es"):
     profile_info = format_profile_summary(report_data.get("profile"))
     analysis = report_data.get("analysis", {})
     risk_badge = format_risk_badge(analysis.get("health_risk"), language)
-    bmi_ind = format_bmi_indicator(analysis.get("bmi"), analysis.get("bmi_category"))
+    bmi_ind = format_bmi_indicator(
+        analysis.get("bmi"), analysis.get("bmi_category"), language
+    )
 
     # HOJA 1: METRICAS
-    ws1 = wb.add_worksheet(t["metrics"] if "metrics" in t else "Metricas")
+    ws1 = wb.add_worksheet(t["metrics"])
     ws1.set_column("A:B", 25)
     ws1.write(0, 0, t["indicator"], hf)
     ws1.write(0, 1, t["value"], hf)
@@ -94,7 +96,7 @@ def generate_health_excel(report_data, language="es"):
     history_entries = format_history_entries(report_data.get("history"))
     ws2 = wb.add_worksheet(t["history"])
     ws2.set_column("A:D", 20)
-    ws2.write_row(0, 0, ["Fecha", t["health_score"], t["risk_level"], t["bmi"]], hf)
+    ws2.write_row(0, 0, [t["date"], t["health_score"], t["risk_level"], t["bmi"]], hf)
     for row_num, h in enumerate(history_entries, 1):
         ws2.write(row_num, 0, h["date"], cf)
         ws2.write(row_num, 1, h["health_score"], cf)
@@ -128,7 +130,7 @@ def generate_health_excel(report_data, language="es"):
     if all_alerts:
         ws4 = wb.add_worksheet(t["alerts"])
         ws4.set_column("A:C", 25)
-        ws4.write_row(0, 0, [t["type"], "Mensaje", t["value"]], hf)
+        ws4.write_row(0, 0, [t["type"], t["message"], t["value"]], hf)
         for i, al in enumerate(all_alerts[:10], 1):
             ws4.write(i, 0, al.get("type", ""), cf)
             ws4.write(i, 1, al.get("message", ""), cf)
@@ -139,16 +141,16 @@ def generate_health_excel(report_data, language="es"):
     if goals:
         ws5 = wb.add_worksheet(t["objectives"])
         ws5.set_column("A:B", 30)
-        ws5.write(0, 0, "Objetivo", hf)
+        ws5.write(0, 0, t["objective"], hf)
         for i, g in enumerate(goals[:10], 1):
             ws5.write(i, 0, g, cf)
 
     # HOJA 6: NARRATIVAS
     narratives = report_data.get("narratives", {})
-    ws6 = wb.add_worksheet("Narrativas")
+    ws6 = wb.add_worksheet(t["narratives"])
     ws6.set_column("A:B", 40)
-    ws6.write(0, 0, "Seccion", hf)
-    ws6.write(0, 1, "Texto", hf)
+    ws6.write(0, 0, t["section"], hf)
+    ws6.write(0, 1, t["text"], hf)
     row = 1
     for nk in ["clinical_summary", "bmi_interpretation", "risk_interpretation",
                "ml_interpretation", "recommendations_summary", "prognosis"]:
@@ -193,8 +195,8 @@ def generate_predictions_excel(report_data, language="es"):
         ws2.set_column("A:B", 25)
         ws2.write(0, 0, t["metric"], hf)
         ws2.write(0, 1, t["value"], hf)
-        conf = format_confidence_badge(ml.get("confidence", 0))
-        ws2.write(1, 0, "Clasificacion", cf)
+        conf = format_confidence_badge(ml.get("confidence", 0), language)
+        ws2.write(1, 0, t["classification"], cf)
         ws2.write(1, 1, ml.get("predicted_class_label", ""), cf)
         ws2.write(2, 0, t["confidence"], cf)
         ws2.write(2, 1, conf["label"], cf)
@@ -203,10 +205,10 @@ def generate_predictions_excel(report_data, language="es"):
 
     # HOJA 3: NARRATIVAS
     narratives = report_data.get("narratives", {})
-    ws3 = wb.add_worksheet("Narrativas")
+    ws3 = wb.add_worksheet(t["narratives"])
     ws3.set_column("A:B", 40)
-    ws3.write(0, 0, "Seccion", hf)
-    ws3.write(0, 1, "Texto", hf)
+    ws3.write(0, 0, t["section"], hf)
+    ws3.write(0, 1, t["text"], hf
     row = 1
     for nk in ["ml_interpretation", "prognosis"]:
         nav = narratives.get(nk)

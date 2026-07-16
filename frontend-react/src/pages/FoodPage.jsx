@@ -84,7 +84,7 @@ function FoodPage() {
   };
 
   return (
-    <div style={{ maxWidth: 700, animation: 'fadeIn 0.3s ease' }}>
+    <div className="page-full" style={{ animation: 'fadeIn 0.3s ease' }}>
       <h1 className="page-title">🍽️ {t('food.title')}</h1>
       <p className="page-subtitle">{t('food.subtitle')}</p>
 

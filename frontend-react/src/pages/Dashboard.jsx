@@ -1,15 +1,41 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useApi } from '../hooks/useApi';
 import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
 import ExplainabilityCenter from '../components/ExplainabilityCenter';
+import { useAnalysis } from '../components/layout/AppLayout';
 import './Dashboard.css';
 
+const GOAL_KEYS = {
+  weight_loss: 'goals.weightLoss',
+  muscle_gain: 'goals.muscleGain',
+  better_sleep: 'goals.betterSleep',
+  stress_reduction: 'goals.stressReduction',
+  energy_boost: 'goals.energyBoost',
+  general_wellness: 'goals.generalWellness',
+};
+
+const ACTIVITY_KEYS = {
+  sedentary: 'profile.sedentary',
+  light: 'profile.light',
+  moderate: 'profile.moderate',
+  active: 'profile.active',
+  very_active: 'profile.veryActive',
+  veryActive: 'profile.veryActive',
+};
+
 function Dashboard() {
-  const { token, user, logout } = useAuth();
+  const { token } = useAuth();
   const { apiRequest } = useApi();
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const {
+    setAnalysis: setSharedAnalysis,
+    setLatestPrediction: setSharedPrediction,
+    setXaiData: setSharedXai,
+  } = useAnalysis();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profile, setProfile] = useState(null);
   const [analysis, setAnalysis] = useState(null);
@@ -19,33 +45,63 @@ function Dashboard() {
   const [statsData, setStatsData] = useState(null);
   const [importanceData, setImportanceData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [message, setMessage] = useState(null);
-  const [sleepHours, setSleepHours] = useState(7);
   const [reportLanguage, setReportLanguage] = useState('es');
   const [diarySummary, setDiarySummary] = useState(null);
 
-  // Load profile on mount
   useEffect(() => {
-    loadProfile();
-    if (activeTab === 'predictions' || activeTab === 'dashboard') {
+    loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'predictions' || activeTab === 'explainability') {
       loadPredictions();
     }
   }, [activeTab]);
 
-  const loadProfile = async () => {
-    const result = await apiRequest('/api/profile', 'GET', null, token);
-    if (result.success) {
-      setProfile(result.data);
-      setSleepHours(result.data.sleep_hours || 7);
+  const loadLatestAnalysis = async () => {
+    const histRes = await apiRequest('/api/history?limit=1', 'GET', null, token);
+    if (!histRes.success || !histRes.data?.length) return null;
+    const detailRes = await apiRequest(`/api/analysis/${histRes.data[0].id}`, 'GET', null, token);
+    if (detailRes.success) return detailRes.data;
+    return null;
+  };
+
+  const loadInitialData = async () => {
+    setInitialLoading(true);
+    try {
+      const profileRes = await apiRequest('/api/profile', 'GET', null, token);
+      if (profileRes.success) {
+        setProfile(profileRes.data);
+      }
+
+      const latestAnalysis = await loadLatestAnalysis();
+      if (latestAnalysis) {
+        setAnalysis(latestAnalysis);
+        setSharedAnalysis(latestAnalysis);
+        if (latestAnalysis.ml_prediction) {
+          setLatestPrediction(latestAnalysis.ml_prediction);
+          setSharedPrediction(latestAnalysis.ml_prediction);
+        }
+        if (latestAnalysis.xai) {
+          setSharedXai(latestAnalysis.xai);
+        }
+      }
+
+      await loadPredictions();
+    } catch (e) {
+      console.error('Error loading dashboard data:', e);
     }
+    setInitialLoading(false);
   };
 
   const loadPredictions = async () => {
-    setLoading(true);
     try {
       const latest = await apiRequest('/api/predictions/latest', 'GET', null, token);
       if (latest.success) {
         setLatestPrediction(latest.data);
+        setSharedPrediction(latest.data);
       }
       const history = await apiRequest('/api/predictions/history?limit=5', 'GET', null, token);
       if (history.success) {
@@ -69,47 +125,13 @@ function Dashboard() {
     } catch (e) {
       console.error('Error loading predictions:', e);
     }
-    setLoading(false);
-  };
-
-  const saveProfile = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    const healthGoalsSelect = e.target.healthGoals;
-    const selectedGoals = Array.from(healthGoalsSelect.selectedOptions).map(opt => opt.value);
-
-    const data = {
-      age: parseInt(e.target.age.value),
-      gender: e.target.gender.value,
-      height_cm: parseFloat(e.target.height.value),
-      weight_kg: parseFloat(e.target.weight.value),
-      activity_level: e.target.activityLevel.value,
-      sleep_hours: sleepHours,
-      smokes: e.target.smokes.checked,
-      has_chronic_conditions: e.target.hasChronic.checked,
-      chronic_conditions_detail: e.target.chronicDetail ? e.target.chronicDetail.value : '',
-      genetics_risk: e.target.geneticsRisk ? e.target.geneticsRisk.value : 'low',
-      health_goals: selectedGoals,
-      family_history: e.target.familyHistory ? e.target.familyHistory.checked : false,
-      favc: e.target.favc ? e.target.favc.value : 'Sometimes',
-      fcvc: e.target.fcvc ? parseFloat(e.target.fcvc.value) : 2.0,
-      ch2o: e.target.ch2o ? parseFloat(e.target.ch2o.value) : 2.0,
-    };
-
-    const result = await apiRequest('/api/profile', 'POST', data, token);
-    if (result.success) {
-      setProfile(data);
-      setMessage({ type: 'success', text: t('messages.profileSaved') });
-      await analyzeHealth();
-    } else {
-      setMessage({ type: 'error', text: result.error });
-    }
-    setLoading(false);
-    setTimeout(() => setMessage(null), 3000);
   };
 
   const analyzeHealth = async () => {
+    if (!profile) {
+      setMessage({ type: 'error', text: t('dashboard.noProfile') });
+      return;
+    }
     setLoading(true);
     setMessage({ type: 'info', text: t('messages.analyzing') });
 
@@ -117,6 +139,14 @@ function Dashboard() {
 
     if (result.success) {
       setAnalysis(result.data);
+      setSharedAnalysis(result.data);
+      if (result.data?.ml_prediction) {
+        setLatestPrediction(result.data.ml_prediction);
+        setSharedPrediction(result.data.ml_prediction);
+      }
+      if (result.data?.xai) {
+        setSharedXai(result.data.xai);
+      }
       setMessage({ type: 'success', text: t('messages.analysisComplete') });
       await loadPredictions();
     } else {
@@ -248,7 +278,7 @@ function Dashboard() {
           <button
             key={key}
             className={`dashboard-tab ${activeTab === key ? 'active' : ''}`}
-            onClick={() => { setActiveTab(key); if (key !== 'dashboard') loadPredictions(); }}
+            onClick={() => setActiveTab(key)}
           >
             {icon} {label}
           </button>
@@ -268,171 +298,145 @@ function Dashboard() {
           </div>
         )}
 
-        {activeTab === 'dashboard' && (
+        {initialLoading ? (
+          <div className="empty-state">
+            <p>{t('common.loading')}</p>
+          </div>
+        ) : null}
+
+        {!initialLoading && activeTab === 'dashboard' && (
           <div className="tab-content">
             <div className="analysis-grid">
               <div>
                 <div className="profile-section">
                   <h3>📝 {t('profile.title')}</h3>
-                  <form key={profile ? 'loaded' : 'new'} onSubmit={saveProfile} className="profile-form" id="profileForm">
-                    <div className="form-section-title">{t('profile.personalData')}</div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label>{t('profile.age')}</label>
-                        <input
-                          type="number"
-                          name="age"
-                          defaultValue={profile?.age || ''}
-                          min="18"
-                          max="100"
-                          required
-                        />
+                  <p className="profile-readonly-hint">{t('dashboard.profileReadonlyHint')}</p>
+
+                  {!profile ? (
+                    <div className="empty-state" style={{ padding: '24px 16px' }}>
+                      <p>{t('dashboard.noProfile')}</p>
+                      <button type="button" className="btn-primary" onClick={() => navigate('/onboarding')}>
+                        {t('onboarding.startBtn')}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="profile-readonly">
+                      <div className="profile-readonly-section">{t('profile.personalData')}</div>
+                      <div className="profile-readonly-grid">
+                        <div className="profile-readonly-item">
+                          <span className="profile-readonly-label">{t('profile.age')}</span>
+                          <span className="profile-readonly-value">{profile.age ?? '—'}</span>
+                        </div>
+                        <div className="profile-readonly-item">
+                          <span className="profile-readonly-label">{t('profile.gender')}</span>
+                          <span className="profile-readonly-value">
+                            {profile.gender === 'female' ? t('profile.female') : profile.gender === 'male' ? t('profile.male') : '—'}
+                          </span>
+                        </div>
+                        <div className="profile-readonly-item">
+                          <span className="profile-readonly-label">{t('profile.weight')}</span>
+                          <span className="profile-readonly-value">{profile.weight_kg != null ? `${profile.weight_kg} kg` : '—'}</span>
+                        </div>
+                        <div className="profile-readonly-item">
+                          <span className="profile-readonly-label">{t('profile.height')}</span>
+                          <span className="profile-readonly-value">{profile.height_cm != null ? `${profile.height_cm} cm` : '—'}</span>
+                        </div>
                       </div>
-                      <div className="form-group">
-                        <label>{t('profile.weight')}</label>
-                        <input
-                          type="number"
-                          name="weight"
-                          step="0.1"
-                          defaultValue={profile?.weight_kg || ''}
-                          min="30"
-                          max="200"
-                          required
-                        />
+
+                      <div className="profile-readonly-section">{t('profile.lifestyle')}</div>
+                      <div className="profile-readonly-grid">
+                        <div className="profile-readonly-item full-width">
+                          <span className="profile-readonly-label">{t('profile.activityLevel')}</span>
+                          <span className="profile-readonly-value">
+                            {t(ACTIVITY_KEYS[profile.activity_level] || 'profile.moderate')}
+                          </span>
+                        </div>
+                        <div className="profile-readonly-item">
+                          <span className="profile-readonly-label">{t('profile.sleepHours')}</span>
+                          <span className="profile-readonly-value">{profile.sleep_hours ?? 7}h</span>
+                        </div>
+                        <div className="profile-readonly-item">
+                          <span className="profile-readonly-label">{t('profile.geneticRisk')}</span>
+                          <span className="profile-readonly-value">
+                            {profile.genetics_risk === 'high'
+                              ? t('profile.geneticHigh')
+                              : profile.genetics_risk === 'medium'
+                                ? t('profile.geneticMedium')
+                                : t('profile.geneticLow')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="profile-readonly-section">{t('profile.health')}</div>
+                      <div className="profile-readonly-grid">
+                        <div className="profile-readonly-item">
+                          <span className="profile-readonly-label">{t('profile.smoker')}</span>
+                          <span className="profile-readonly-value">{profile.smokes ? t('onboarding.yes') : t('onboarding.no')}</span>
+                        </div>
+                        <div className="profile-readonly-item">
+                          <span className="profile-readonly-label">{t('profile.familyHistory')}</span>
+                          <span className="profile-readonly-value">{profile.family_history ? t('onboarding.yes') : t('onboarding.no')}</span>
+                        </div>
+                        <div className="profile-readonly-item full-width">
+                          <span className="profile-readonly-label">{t('profile.chronicConditions')}</span>
+                          <span className="profile-readonly-value">
+                            {profile.has_chronic_conditions
+                              ? (profile.chronic_conditions_detail || t('onboarding.yes'))
+                              : t('onboarding.no')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="profile-readonly-section">{t('profile.nutritionSection')}</div>
+                      <div className="profile-readonly-grid">
+                        <div className="profile-readonly-item full-width">
+                          <span className="profile-readonly-label">{t('profile.fastFood')}</span>
+                          <span className="profile-readonly-value">
+                            {profile.favc === 'Always' ? t('profile.fastFoodAlways')
+                              : profile.favc === 'Frequently' ? t('profile.fastFoodFrequently')
+                              : profile.favc === 'No' ? t('profile.fastFoodNo')
+                              : t('profile.fastFoodSometimes')}
+                          </span>
+                        </div>
+                        <div className="profile-readonly-item">
+                          <span className="profile-readonly-label">{t('onboarding.vegetables')}</span>
+                          <span className="profile-readonly-value">
+                            {Number(profile.fcvc) === 1 ? t('profile.veg1')
+                              : Number(profile.fcvc) === 3 ? t('profile.veg3')
+                              : t('profile.veg2')}
+                          </span>
+                        </div>
+                        <div className="profile-readonly-item">
+                          <span className="profile-readonly-label">{t('onboarding.water')}</span>
+                          <span className="profile-readonly-value">
+                            {Number(profile.ch2o) === 1 ? t('profile.water1')
+                              : Number(profile.ch2o) === 3 ? t('profile.water3')
+                              : t('profile.water2')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="profile-readonly-section">{t('profile.goalsSection')}</div>
+                      <div className="profile-readonly-grid">
+                        <div className="profile-readonly-item full-width">
+                          <span className="profile-readonly-label">{t('profile.healthGoals')}</span>
+                          <span className="profile-readonly-value">
+                            {(profile.health_goals || []).length
+                              ? profile.health_goals.map(g => t(GOAL_KEYS[g] || g)).join(', ')
+                              : t('dashboard.noGoals')}
+                          </span>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label>{t('profile.height')}</label>
-                        <input
-                          type="number"
-                          name="height"
-                          step="0.1"
-                          defaultValue={profile?.height_cm || ''}
-                          min="100"
-                          max="220"
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>{t('profile.gender')}</label>
-                        <select name="gender" defaultValue={profile?.gender || ''} required>
-                          <option value="" disabled>{t('profile.choose')}</option>
-                          <option value="male">{t('profile.male')}</option>
-                          <option value="female">{t('profile.female')}</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="form-section-title">{t('profile.lifestyle')}</div>
-                    <div className="form-group">
-                      <label>{t('profile.activityLevel')}</label>
-                      <select name="activityLevel" defaultValue={profile?.activity_level || ''} required>
-                        <option value="" disabled>{t('profile.choose')}</option>
-                        <option value="sedentary">{t('profile.sedentary')}</option>
-                        <option value="light">{t('profile.light')}</option>
-                        <option value="moderate">{t('profile.moderate')}</option>
-                        <option value="active">{t('profile.active')}</option>
-                        <option value="very_active">{t('profile.veryActive')}</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>{t('profile.sleepHours')}: {sleepHours}</label>
-                      <input
-                        type="range"
-                        name="sleepHours"
-                        min="4"
-                        max="12"
-                        value={sleepHours}
-                        onChange={(e) => setSleepHours(parseInt(e.target.value))}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>{t('profile.geneticRisk')}</label>
-                      <select name="geneticsRisk" defaultValue={profile?.genetics_risk || 'low'}>
-                        <option value="low">{t('profile.geneticLow')}</option>
-                        <option value="medium">{t('profile.geneticMedium')}</option>
-                        <option value="high">{t('profile.geneticHigh')}</option>
-                      </select>
-                    </div>
-
-                    <div className="form-section-title">{t('profile.health')}</div>
-                    <div className="form-check">
-                      <input type="checkbox" name="smokes" defaultChecked={profile?.smokes} id="smokes" />
-                      <label htmlFor="smokes">{t('profile.smoker')}</label>
-                    </div>
-
-                    <div className="form-check">
-                      <input type="checkbox" name="hasChronic" defaultChecked={profile?.has_chronic_conditions} id="hasChronic" onChange={(e) => {
-                        const detailInput = document.getElementById('chronicDetailContainer');
-                        if (detailInput) detailInput.style.display = e.target.checked ? 'block' : 'none';
-                      }} />
-                      <label htmlFor="hasChronic">{t('profile.chronicConditions')}</label>
-                    </div>
-
-                    <div className="form-group" id="chronicDetailContainer" style={{ display: profile?.has_chronic_conditions ? 'block' : 'none', marginTop: '10px' }}>
-                      <label>{t('profile.chronicDetail')}</label>
-                      <input type="text" name="chronicDetail" defaultValue={profile?.chronic_conditions_detail || ''} placeholder={t('profile.chronicPlaceholder')} />
-                    </div>
-
-                    <div className="form-check">
-                      <input type="checkbox" name="familyHistory" defaultChecked={profile?.family_history} id="familyHistory" />
-                      <label htmlFor="familyHistory">{t('profile.familyHistory')}</label>
-                    </div>
-
-                    <div className="form-section-title">{t('profile.nutritionSection')}</div>
-                    <div className="form-group">
-                      <label>{t('profile.fastFood')}</label>
-                      <select name="favc" defaultValue={profile?.favc || 'Sometimes'}>
-                        <option value="Always">{t('profile.fastFoodAlways')}</option>
-                        <option value="Frequently">{t('profile.fastFoodFrequently')}</option>
-                        <option value="Sometimes">{t('profile.fastFoodSometimes')}</option>
-                        <option value="No">{t('profile.fastFoodNo')}</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>{t('profile.vegetables')}</label>
-                      <select name="fcvc" defaultValue={profile?.fcvc || 2.0}>
-                        <option value="1">{t('profile.veg1')}</option>
-                        <option value="2">{t('profile.veg2')}</option>
-                        <option value="3">{t('profile.veg3')}</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>{t('profile.water')}</label>
-                      <select name="ch2o" defaultValue={profile?.ch2o || 2.0}>
-                        <option value="1">{t('profile.water1')}</option>
-                        <option value="2">{t('profile.water2')}</option>
-                        <option value="3">{t('profile.water3')}</option>
-                      </select>
-                    </div>
-
-                    <div className="form-section-title">{t('profile.goalsSection')}</div>
-                    <div className="form-group">
-                      <label>{t('profile.healthGoals')}</label>
-                      <select name="healthGoals" multiple defaultValue={profile?.health_goals || []} size="6" required>
-                        <option value="weight_loss">{t('goals.weightLoss')}</option>
-                        <option value="muscle_gain">{t('goals.muscleGain')}</option>
-                        <option value="better_sleep">{t('goals.betterSleep')}</option>
-                        <option value="stress_reduction">{t('goals.stressReduction')}</option>
-                        <option value="energy_boost">{t('goals.energyBoost')}</option>
-                        <option value="general_wellness">{t('goals.generalWellness')}</option>
-                      </select>
-                    </div>
-                  </form>
+                  )}
                 </div>
 
                 <div className="analyze-button-area">
                   <button
-                    type="submit"
-                    form="profileForm"
+                    type="button"
+                    onClick={analyzeHealth}
                     className={`btn-primary btn-large ${loading ? 'loading' : ''}`}
-                    disabled={loading}
+                    disabled={loading || !profile}
                   >
                     {loading ? (
                       <>
@@ -443,6 +447,16 @@ function Dashboard() {
                       t('profile.analyze')
                     )}
                   </button>
+                  {profile && (
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ marginTop: 10, width: '100%' }}
+                      onClick={() => navigate('/profile')}
+                    >
+                      {t('dashboard.editProfile')}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -465,17 +479,17 @@ function Dashboard() {
                       <div className="analysis-card bmi">
                         <div className="analysis-card-icon" title="Índice de Masa Corporal — relación entre tu peso y tu estatura">⚖️</div>
                         <div className="analysis-card-label">{t('analysis.bmi')}</div>
-                        <div className="analysis-card-value tooltip-trigger" title={`IMC: ${analysis.bmi} — Categoría: ${analysis.bmi_category.replace('_', ' ')}. Valores normales: 18.5 – 24.9`}>{analysis.bmi}</div>
+                        <div className="analysis-card-value tooltip-trigger" title={`IMC: ${analysis.bmi} — Categoría: ${String(analysis.bmi_category || '').replace('_', ' ')}. Valores normales: 18.5 – 24.9`}>{analysis.bmi}</div>
                         <div className="analysis-card-desc">{t('analysis.bmiDesc')}</div>
                         <span className={`analysis-card-badge ${analysis.bmi_category === 'normal' ? '' : analysis.bmi_category === 'obese' ? 'danger' : 'warning'}`}>
-                          {analysis.bmi_category.replace('_', ' ')}
+                          {String(analysis.bmi_category || '').replace('_', ' ')}
                         </span>
                       </div>
 
                       <div className="analysis-card calories">
                         <div className="analysis-card-icon" title="Total de Energía Diaria Expendida — calorías que tu cuerpo necesita al día">🔥</div>
                         <div className="analysis-card-label">{t('analysis.dailyCalories')}</div>
-                        <div className="analysis-card-value tooltip-trigger" title={`TDEE: ${analysis.tdee?.toFixed(0)} kcal/día. Calculado según tu nivel de actividad, peso, altura y objetivo.`}>{analysis.tdee?.toFixed(0)}</div>
+                        <div className="analysis-card-value tooltip-trigger" title={`TDEE: ${Number(analysis.tdee || 0).toFixed(0)} kcal/día. Calculado según tu nivel de actividad, peso, altura y objetivo.`}>{Number(analysis.tdee || 0).toFixed(0)}</div>
                         <div className="analysis-card-desc">{t('analysis.caloriesDesc')}</div>
                         <span className="analysis-card-badge info">TDEE</span>
                       </div>
@@ -489,7 +503,7 @@ function Dashboard() {
                           {analysis.alerts && analysis.alerts.length > 0 ? (
                             analysis.alerts.map((alert, i) => (
                               <p key={i}>
-                                {alert.priority === 'high' || alert.message.includes('Clínica') ? '🚨' : '⚠️'} {alert.message}
+                                {alert.priority === 'high' || (alert.message || '').includes('Clínica') ? '🚨' : '⚠️'} {alert.message || alert}
                               </p>
                             ))
                           ) : (

@@ -68,7 +68,7 @@ function DiaryPage() {
   );
 
   return (
-    <div style={{ maxWidth: 800, animation: 'fadeIn 0.3s ease' }}>
+    <div className="page-full" style={{ animation: 'fadeIn 0.3s ease' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <div>
           <h1 className="page-title">📓 {t('diary.title')}</h1>

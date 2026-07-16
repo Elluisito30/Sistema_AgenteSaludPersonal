@@ -365,7 +365,7 @@ def get_profile(user_id: int = Depends(verify_token)):
         if not profile:
             raise HTTPException(status_code=404, detail="Perfil no encontrado")
         
-        return dict(profile)
+        return convert_to_json_serializable(dict(profile))
 
 # ============================================
 # ENDPOINT DE ANÁLISIS CON N8N
@@ -615,7 +615,7 @@ def get_history(limit: int = 20, user_id: int = Depends(verify_token)):
             LIMIT %s
         """, (user_id, limit))
         
-        return [dict(row) for row in cursor.fetchall()]
+        return [convert_to_json_serializable(dict(row)) for row in cursor.fetchall()]
 
 @app.get("/api/analysis/{analysis_id}")
 def get_analysis(analysis_id: int, user_id: int = Depends(verify_token)):
@@ -632,7 +632,7 @@ def get_analysis(analysis_id: int, user_id: int = Depends(verify_token)):
         if not analysis:
             raise HTTPException(status_code=404, detail="Análisis no encontrado")
         
-        return dict(analysis)
+        return convert_to_json_serializable(dict(analysis))
 
 # ============================================
 # ENDPOINTS DE PROGRESO DIARIO
@@ -1101,7 +1101,7 @@ import io
 # Usa ReportEngine como capa unica de datos
 # ==========================================
 
-def _get_report_data(user_id, include_history=False, history_limit=10):
+def _get_report_data(user_id, include_history=False, history_limit=10, language="es"):
     """Helper: obtiene datos del perfil, analisis, predicciones e historial."""
     with get_db_cursor(commit=False) as cursor:
         cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
@@ -1125,7 +1125,9 @@ def _get_report_data(user_id, include_history=False, history_limit=10):
 
     from services.reports import ReportEngine
     engine = ReportEngine()
-    return engine.build_from_db(profile, analysis, predictions, history)
+    return engine.build_from_db(
+        profile, analysis, predictions, history, language=language
+    )
 
 
 # ==========================================
@@ -1135,7 +1137,7 @@ def _get_report_data(user_id, include_history=False, history_limit=10):
 @app.get("/api/reports/health/pdf")
 def get_health_report_pdf(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de estado de salud en PDF"""
-    report = _get_report_data(user_id, include_history=True, history_limit=5)
+    report = _get_report_data(user_id, include_history=True, history_limit=5, language=language)
 
     from services.reports import generate_health_pdf
     pdf_buffer = generate_health_pdf(report, language=language)
@@ -1151,7 +1153,7 @@ def get_health_report_pdf(user_id: int = Depends(verify_token), language: str = 
 @app.get("/api/reports/health/excel")
 def get_health_report_excel(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de estado de salud en Excel"""
-    report = _get_report_data(user_id, include_history=True, history_limit=10)
+    report = _get_report_data(user_id, include_history=True, history_limit=10, language=language)
 
     from services.reports import generate_health_excel
     excel_buffer = generate_health_excel(report, language=language)
@@ -1167,7 +1169,7 @@ def get_health_report_excel(user_id: int = Depends(verify_token), language: str 
 @app.get("/api/reports/health/word")
 def get_health_report_word(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de estado de salud en Word"""
-    report = _get_report_data(user_id)
+    report = _get_report_data(user_id, language=language)
 
     from services.reports import generate_health_word
     word_buffer = generate_health_word(report, language=language)
@@ -1187,7 +1189,7 @@ def get_health_report_word(user_id: int = Depends(verify_token), language: str =
 @app.get("/api/reports/predictions/pdf")
 def get_predictions_report_pdf(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de predicciones en PDF"""
-    report = _get_report_data(user_id)
+    report = _get_report_data(user_id, language=language)
 
     from services.reports import generate_predictions_pdf
     pdf_buffer = generate_predictions_pdf(report, language=language)
@@ -1203,7 +1205,7 @@ def get_predictions_report_pdf(user_id: int = Depends(verify_token), language: s
 @app.get("/api/reports/predictions/excel")
 def get_predictions_report_excel(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de predicciones en Excel"""
-    report = _get_report_data(user_id)
+    report = _get_report_data(user_id, language=language)
 
     from services.reports import generate_predictions_excel
     excel_buffer = generate_predictions_excel(report, language=language)
@@ -1219,7 +1221,7 @@ def get_predictions_report_excel(user_id: int = Depends(verify_token), language:
 @app.get("/api/reports/predictions/word")
 def get_predictions_report_word(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de predicciones en Word"""
-    report = _get_report_data(user_id)
+    report = _get_report_data(user_id, language=language)
 
     from services.reports import generate_predictions_word
     word_buffer = generate_predictions_word(report, language=language)
@@ -1239,7 +1241,7 @@ def get_predictions_report_word(user_id: int = Depends(verify_token), language: 
 @app.get("/api/reports/recipes/pdf")
 def get_recipes_report_pdf(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de recetas en PDF"""
-    report = _get_report_data(user_id)
+    report = _get_report_data(user_id, language=language)
 
     from services.reports import generate_nutrition_pdf
     pdf_buffer = generate_nutrition_pdf(report, language=language)
@@ -1255,7 +1257,7 @@ def get_recipes_report_pdf(user_id: int = Depends(verify_token), language: str =
 @app.get("/api/reports/recipes/excel")
 def get_recipes_report_excel(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de recetas en Excel"""
-    report = _get_report_data(user_id)
+    report = _get_report_data(user_id, language=language)
 
     from services.reports import generate_nutrition_excel
     excel_buffer = generate_nutrition_excel(report, language=language)
@@ -1271,7 +1273,7 @@ def get_recipes_report_excel(user_id: int = Depends(verify_token), language: str
 @app.get("/api/reports/recipes/word")
 def get_recipes_report_word(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de recetas en Word"""
-    report = _get_report_data(user_id)
+    report = _get_report_data(user_id, language=language)
 
     from services.reports import generate_nutrition_word
     word_buffer = generate_nutrition_word(report, language=language)
@@ -1291,7 +1293,7 @@ def get_recipes_report_word(user_id: int = Depends(verify_token), language: str 
 @app.get("/api/reports/exercise/pdf")
 def get_exercise_report_pdf(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de ejercicio en PDF"""
-    report = _get_report_data(user_id)
+    report = _get_report_data(user_id, language=language)
 
     from services.reports import generate_exercise_pdf
     pdf_buffer = generate_exercise_pdf(report, language=language)
@@ -1307,7 +1309,7 @@ def get_exercise_report_pdf(user_id: int = Depends(verify_token), language: str 
 @app.get("/api/reports/exercise/excel")
 def get_exercise_report_excel(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de ejercicio en Excel"""
-    report = _get_report_data(user_id)
+    report = _get_report_data(user_id, language=language)
 
     from services.reports import generate_exercise_excel
     excel_buffer = generate_exercise_excel(report, language=language)
@@ -1323,7 +1325,7 @@ def get_exercise_report_excel(user_id: int = Depends(verify_token), language: st
 @app.get("/api/reports/exercise/word")
 def get_exercise_report_word(user_id: int = Depends(verify_token), language: str = "es"):
     """Generar reporte de ejercicio en Word"""
-    report = _get_report_data(user_id)
+    report = _get_report_data(user_id, language=language)
 
     from services.reports import generate_exercise_word
     word_buffer = generate_exercise_word(report, language=language)
@@ -1514,10 +1516,10 @@ def get_journey_summary(user_id: int = Depends(verify_token)):
         cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
         profile = cursor.fetchone()
         if not profile:
-            return {"has_profile": False}
+            return {"has_profile": False, "has_analysis": False}
 
         cursor.execute("""
-            SELECT health_score, bmi, alerts, weekly_goals, ml_prediction
+            SELECT health_score, bmi, alerts, weekly_goals
             FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1
         """, (user_id,))
         analysis = cursor.fetchone()
@@ -1543,14 +1545,14 @@ def get_journey_summary(user_id: int = Depends(verify_token)):
         "health_score": None,
         "bmi": None,
         "alerts_count": 0,
-        "today_progress": dict(today_progress) if today_progress else None,
+        "today_progress": convert_to_json_serializable(dict(today_progress)) if today_progress else None,
         "streak_days": streak['streak'] if streak else 0,
         "goals_count": 0,
         "has_analysis": analysis is not None,
     }
 
     if analysis:
-        a = dict(analysis)
+        a = convert_to_json_serializable(dict(analysis))
         result["health_score"] = a.get("health_score")
         result["bmi"] = a.get("bmi")
         alerts = a.get("alerts") or []
@@ -1559,14 +1561,14 @@ def get_journey_summary(user_id: int = Depends(verify_token)):
                 alerts = json.loads(alerts)
             except Exception:
                 alerts = []
-        result["alerts_count"] = len(alerts)
+        result["alerts_count"] = len(alerts) if isinstance(alerts, list) else 0
         goals = a.get("weekly_goals") or []
         if isinstance(goals, str):
             try:
                 goals = json.loads(goals)
             except Exception:
                 goals = []
-        result["goals_count"] = len(goals)
+        result["goals_count"] = len(goals) if isinstance(goals, list) else 0
 
     return result
 

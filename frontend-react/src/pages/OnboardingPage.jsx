@@ -8,6 +8,24 @@ const STEPS = ['welcome', 'physical', 'activity', 'goals', 'habits', 'food', 'su
 
 const STEP_ICONS = ['👋', '📏', '🏃', '🎯', '💤', '🥗', '✅'];
 
+const GOAL_I18N_KEYS = {
+  weight_loss: 'weightLoss',
+  muscle_gain: 'muscleGain',
+  better_sleep: 'betterSleep',
+  stress_reduction: 'stressReduction',
+  energy_boost: 'energyBoost',
+  general_wellness: 'generalWellness',
+};
+
+const ACTIVITY_I18N_KEYS = {
+  sedentary: 'sedentary',
+  light: 'light',
+  moderate: 'moderate',
+  active: 'active',
+  very_active: 'veryActive',
+  veryActive: 'veryActive',
+};
+
 function OnboardingPage() {
   const { t } = useTranslation();
   const { token } = useAuth();
@@ -37,6 +55,11 @@ function OnboardingPage() {
   const next = () => setStep(s => Math.min(s + 1, STEPS.length - 1));
   const back = () => setStep(s => Math.max(s - 1, 0));
 
+  const normalizeActivityLevel = (level) => {
+    if (level === 'veryActive') return 'very_active';
+    return level || 'moderate';
+  };
+
   const handleFinish = async () => {
     setSaving(true);
     setError(null);
@@ -45,7 +68,7 @@ function OnboardingPage() {
       gender: data.gender || 'male',
       height_cm: parseFloat(data.height_cm) || 170,
       weight_kg: parseFloat(data.weight_kg) || 70,
-      activity_level: data.activity_level || 'moderate',
+      activity_level: normalizeActivityLevel(data.activity_level),
       sleep_hours: data.sleep_hours || 7,
       smokes: data.smokes,
       has_chronic_conditions: false,
@@ -57,12 +80,15 @@ function OnboardingPage() {
     };
     const res = await apiRequest('/api/profile', 'POST', payload, token);
     if (res.success) {
-      navigate('/journey');
+      navigate('/dashboard');
     } else {
-      setError(t('onboarding.errorSaving'));
+      setError(res.error || t('onboarding.errorSaving'));
     }
     setSaving(false);
   };
+
+  const goalLabel = (goal) => t(`onboarding.${GOAL_I18N_KEYS[goal] || goal}`);
+  const activityLabel = (level) => t(`onboarding.${ACTIVITY_I18N_KEYS[level] || level}`);
 
   const s = step;
   const cardStyle = {
@@ -185,7 +211,7 @@ function OnboardingPage() {
             ].map(([goal, icon]) => (
               <button key={goal} onClick={() => toggleGoal(goal)}
                 style={goalChip(data.health_goals.includes(goal))}>
-                {icon} {t(`onboarding.${goal.replace('_', '')}`)}
+                {icon} {goalLabel(goal)}
               </button>
             ))}
           </div>
@@ -267,12 +293,12 @@ function OnboardingPage() {
         {s === 6 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
             {[
-              ['👤', `${data.age || '?'} años, ${data.gender === 'male' ? 'Hombre' : 'Mujer'}`],
+              ['👤', `${data.age || '?'} ${t('onboarding.years')}, ${data.gender === 'male' ? t('onboarding.male') : t('onboarding.female')}`],
               ['📏', `${data.height_cm || '?'} cm, ${data.weight_kg || '?'} kg`],
-              ['🏃', data.activity_level || 'moderate'],
-              ['😴', `${data.sleep_hours}h sueño`],
-              ['🎯', data.health_goals.join(', ') || 'Ninguno'],
-              ['🥗', `FAVC: ${data.favc}, FCVC: ${data.fcvc}, Agua: ${data.ch2o}`],
+              ['🏃', activityLabel(data.activity_level || 'moderate')],
+              ['😴', `${data.sleep_hours}h ${t('onboarding.sleepLabel')}`],
+              ['🎯', data.health_goals.length ? data.health_goals.map(goalLabel).join(', ') : t('onboarding.noGoalsSelected')],
+              ['🥗', `${t('onboarding.fastFood')}: ${data.favc}, ${t('onboarding.vegetables')}: ${data.fcvc}, ${t('onboarding.water')}: ${data.ch2o}`],
             ].map(([icon, text], i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: 'var(--surface-light)', borderRadius: 10 }}>
                 <span style={{ fontSize: 18 }}>{icon}</span>

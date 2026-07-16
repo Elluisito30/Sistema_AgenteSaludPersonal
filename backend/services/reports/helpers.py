@@ -7,25 +7,30 @@ Devuelve dicts/lists que cada renderer interpreta a su manera.
 
 from services.reports.styles import (
     get_risk_colors,
+    get_risk_label,
+    get_bmi_category_label,
+    get_translations,
     ALERT_PRIORITY_COLORS,
-    BMI_CATEGORY_LABELS,
     BMI_CATEGORY_COLORS,
     COLORS,
 )
 
 
 def format_risk_badge(risk_level, language="es"):
-    """Badge de nivel de riesgo con color y label."""
-    colors = get_risk_colors(risk_level)
+    """Badge de nivel de riesgo con color y label traducido."""
+    colors = get_risk_colors(risk_level, language)
+    label = get_risk_label(risk_level, language)
     return {
-        "label": risk_level or "Sin Datos",
+        "label": label,
         "color_hex": colors["hex"],
         "color_rgb": colors["rgb"],
+        "key": colors.get("key"),
     }
 
 
-def format_confidence_badge(confidence):
-    """Badge de confianza del modelo ML."""
+def format_confidence_badge(confidence, language="es"):
+    """Badge de confianza del modelo ML con nivel traducido."""
+    t = get_translations(language)
     if confidence is None:
         confidence = 0
     if isinstance(confidence, float) and confidence <= 1.0:
@@ -33,17 +38,18 @@ def format_confidence_badge(confidence):
 
     if confidence >= 90:
         color = COLORS["success"]
-        level = "alta"
+        level_key = "confidence_high"
     elif confidence >= 70:
         color = COLORS["info"]
-        level = "media"
+        level_key = "confidence_medium"
     elif confidence >= 50:
         color = COLORS["warning"]
-        level = "baja"
+        level_key = "confidence_low"
     else:
         color = COLORS["danger"]
-        level = "muy baja"
+        level_key = "confidence_very_low"
 
+    level = t.get(level_key, level_key)
     return {
         "value": confidence,
         "label": f"{confidence}%",
@@ -52,8 +58,8 @@ def format_confidence_badge(confidence):
     }
 
 
-def format_bmi_indicator(bmi, bmi_category):
-    """Indicador visual de BMI con barra de progreso."""
+def format_bmi_indicator(bmi, bmi_category, language="es"):
+    """Indicador visual de BMI con barra de progreso y label bilingüe."""
     if bmi is None:
         bmi = 0
 
@@ -72,7 +78,7 @@ def format_bmi_indicator(bmi, bmi_category):
             progress = pct
             break
 
-    label = BMI_CATEGORY_LABELS.get(bmi_category, bmi_category or "")
+    label = get_bmi_category_label(bmi_category, language)
     color = BMI_CATEGORY_COLORS.get(bmi_category, COLORS["text_light"])
 
     return {

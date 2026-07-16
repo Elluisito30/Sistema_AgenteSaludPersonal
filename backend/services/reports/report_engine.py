@@ -17,94 +17,143 @@ NO modifica servicios existentes.
 Uso:
     engine = ReportEngine()
     report = engine.build_from_analysis_response(analysis_response, profile, history)
-    report = engine.build_from_db(profile, analysis, predictions, history)
+    report = engine.build_from_db(profile, analysis, predictions, history, language="es")
 """
 
 from datetime import datetime
+
+from services.reports.styles import get_bmi_category_label, get_translations
 
 
 # ──────────────────────────────────────────────
 # Constantes para narratives
 # ──────────────────────────────────────────────
 
-BMI_CATEGORY_LABELS = {
-    "severely_underweight": "desnutrición severa",
-    "underweight": "bajo peso",
-    "normal": "peso normal",
-    "overweight": "sobrepeso",
-    "obese_1": "obesidad grado I",
-    "obese_2_3": "obesidad grado II/III",
-}
-
 BMI_CATEGORY_DESCRIPTIONS = {
-    "severely_underweight": (
-        "IMC por debajo de 16, indicando desnutrición severa que requiere "
-        "intervención médica inmediata."
-    ),
-    "underweight": (
-        "IMC entre 16 y 18.5, indicando peso insuficiente. "
-        "Se recomienda valoración nutricional."
-    ),
-    "normal": (
-        "IMC dentro del rango saludable (18.5-25). Mantener hábitos actuales."
-    ),
-    "overweight": (
-        "IMC entre 25 y 30, indicando sobrepeso. "
-        "Se sugiere ajuste en dieta y actividad física."
-    ),
-    "obese_1": (
-        "IMC entre 30 y 35, indicando obesidad grado I. "
-        "Se requiere intervención nutricional y control médico."
-    ),
-    "obese_2_3": (
-        "IMC mayor a 35, indicando obesidad severa. "
-        "Intervención médica urgente necesaria."
-    ),
-}
-
-SEVERITY_LABELS = {
-    "critical": "Crítico",
-    "high": "Alto",
-    "medium": "Moderado",
-    "low": "Bajo",
-    "optimal": "Óptimo",
+    "es": {
+        "severely_underweight": (
+            "IMC por debajo de 16, indicando desnutrición severa que requiere "
+            "intervención médica inmediata."
+        ),
+        "underweight": (
+            "IMC entre 16 y 18.5, indicando peso insuficiente. "
+            "Se recomienda valoración nutricional."
+        ),
+        "normal": (
+            "IMC dentro del rango saludable (18.5-25). Mantener hábitos actuales."
+        ),
+        "overweight": (
+            "IMC entre 25 y 30, indicando sobrepeso. "
+            "Se sugiere ajuste en dieta y actividad física."
+        ),
+        "obese_1": (
+            "IMC entre 30 y 35, indicando obesidad grado I. "
+            "Se requiere intervención nutricional y control médico."
+        ),
+        "obese_2_3": (
+            "IMC mayor a 35, indicando obesidad severa. "
+            "Intervención médica urgente necesaria."
+        ),
+    },
+    "en": {
+        "severely_underweight": (
+            "BMI below 16, indicating severe undernutrition that requires "
+            "immediate medical intervention."
+        ),
+        "underweight": (
+            "BMI between 16 and 18.5, indicating insufficient weight. "
+            "Nutritional assessment is recommended."
+        ),
+        "normal": (
+            "BMI within the healthy range (18.5-25). Maintain current habits."
+        ),
+        "overweight": (
+            "BMI between 25 and 30, indicating overweight. "
+            "Diet and physical activity adjustments are suggested."
+        ),
+        "obese_1": (
+            "BMI between 30 and 35, indicating obesity class I. "
+            "Nutritional intervention and medical follow-up are required."
+        ),
+        "obese_2_3": (
+            "BMI above 35, indicating severe obesity. "
+            "Urgent medical intervention is necessary."
+        ),
+    },
 }
 
 SEVERITY_DESCRIPTIONS = {
-    "critical": (
-        "El estado actual representa un riesgo elevado para la salud. "
-        "Se recomienda atención médica supervisada de forma prioritaria."
-    ),
-    "high": (
-        "El nivel de riesgo es alto. Es importante tomar acciones "
-        "correctivas con acompañamiento profesional."
-    ),
-    "medium": (
-        "El riesgo es moderado. Con cambios graduales en los hábitos "
-        "se puede mejorar significativamente la situación actual."
-    ),
-    "low": (
-        "El nivel de riesgo es bajo. Se recomienda mantener los "
-        "hábitos actuales y realizar seguimiento periódico."
-    ),
-    "optimal": (
-        "El estado de salud es óptimo. Se recomienda mantener "
-        "los hábitos actuales para conservar este nivel."
-    ),
+    "es": {
+        "critical": (
+            "El estado actual representa un riesgo elevado para la salud. "
+            "Se recomienda atención médica supervisada de forma prioritaria."
+        ),
+        "high": (
+            "El nivel de riesgo es alto. Es importante tomar acciones "
+            "correctivas con acompañamiento profesional."
+        ),
+        "medium": (
+            "El riesgo es moderado. Con cambios graduales en los hábitos "
+            "se puede mejorar significativamente la situación actual."
+        ),
+        "low": (
+            "El nivel de riesgo es bajo. Se recomienda mantener los "
+            "hábitos actuales y realizar seguimiento periódico."
+        ),
+        "optimal": (
+            "El estado de salud es óptimo. Se recomienda mantener "
+            "los hábitos actuales para conservar este nivel."
+        ),
+    },
+    "en": {
+        "critical": (
+            "The current status represents an elevated health risk. "
+            "Supervised medical attention is recommended as a priority."
+        ),
+        "high": (
+            "The risk level is high. Corrective actions with "
+            "professional support are important."
+        ),
+        "medium": (
+            "The risk is moderate. Gradual habit changes can "
+            "significantly improve the current situation."
+        ),
+        "low": (
+            "The risk level is low. Maintaining current habits "
+            "and periodic follow-up are recommended."
+        ),
+        "optimal": (
+            "Health status is optimal. Maintaining current habits "
+            "is recommended to preserve this level."
+        ),
+    },
 }
 
 ACTIVITY_LABELS = {
-    "sedentary": "Sedentario",
-    "light": "Ligero",
-    "moderate": "Moderado",
-    "active": "Activo",
-    "very_active": "Muy Activo",
+    "sedentary": {"es": "Sedentario", "en": "Sedentary"},
+    "light": {"es": "Ligero", "en": "Light"},
+    "moderate": {"es": "Moderado", "en": "Moderate"},
+    "active": {"es": "Activo", "en": "Active"},
+    "very_active": {"es": "Muy Activo", "en": "Very Active"},
 }
 
 GENDER_LABELS = {
-    "male": "Masculino",
-    "female": "Femenino",
+    "male": {"es": "Masculino", "en": "Male"},
+    "female": {"es": "Femenino", "en": "Female"},
 }
+
+
+def _lang(language):
+    return language if language in ("es", "en") else "es"
+
+
+def _label_map(mapping, key, language="es"):
+    entry = mapping.get(key)
+    if not entry:
+        return key
+    if isinstance(entry, dict):
+        return entry.get(_lang(language), entry.get("es", key))
+    return entry
 
 
 # ──────────────────────────────────────────────
@@ -133,29 +182,24 @@ class ReportEngine:
      11. narratives    — Textos interpretativos (LLM-ready)
     """
 
-    def build_from_analysis_response(self, analysis_response, profile, history=None):
+    def build_from_analysis_response(
+        self, analysis_response, profile, history=None, language="es"
+    ):
         """
         Construye ReportData desde la respuesta completa de /api/analyze.
 
         Incluye ML + XAI (datos disponibles solo en tiempo real).
-
-        Args:
-            analysis_response: dict retornado por /api/analyze (health_score, bmi,
-                ml_prediction, xai, alerts, predictions, health_plan, etc.)
-            profile: dict del perfil del paciente (health_profiles)
-            history: list[dict] de análisis anteriores (opcional)
-
-        Returns:
-            dict con las 11 secciones unificadas.
         """
         ar = analysis_response or {}
         health_plan = ar.get("health_plan") or {}
+        lang = _lang(language)
 
         return {
             "generated_at": datetime.now().isoformat(),
             "source": "live_analysis",
-            "profile": self._build_profile_section(profile),
-            "analysis": self._build_analysis_section(ar),
+            "language": lang,
+            "profile": self._build_profile_section(profile, lang),
+            "analysis": self._build_analysis_section(ar, lang),
             "ml_prediction": self._build_ml_section(ar.get("ml_prediction")),
             "xai": self._build_xai_section(ar.get("xai")),
             "alerts": self._build_alerts_section(ar.get("alerts")),
@@ -176,24 +220,18 @@ class ReportEngine:
                 clinical_summary=ar.get("clinical_summary"),
                 health_plan=health_plan,
                 predictions=ar.get("predictions"),
+                language=lang,
             ),
         }
 
-    def build_from_db(self, profile, analysis, predictions=None, history=None):
+    def build_from_db(
+        self, profile, analysis, predictions=None, history=None, language="es"
+    ):
         """
         Construye ReportData desde datos de BD (reportes históricos).
 
         Puede no incluir ml_prediction ni xai si no están almacenados.
         Reconstruye ml_prediction parcialmente desde health_predictions si existe.
-
-        Args:
-            profile: dict del perfil del paciente
-            analysis: dict de health_analyses (último análisis)
-            predictions: dict de health_predictions (última predicción, opcional)
-            history: list[dict] de análisis anteriores (opcional)
-
-        Returns:
-            dict con las 11 secciones unificadas.
         """
         analysis = analysis or {}
         health_plan = analysis.get("health_plan") or {}
@@ -204,13 +242,15 @@ class ReportEngine:
             except (json.JSONDecodeError, TypeError):
                 health_plan = {}
 
+        lang = _lang(language)
         ml_from_db = self._reconstruct_ml_from_predictions(predictions)
 
         return {
             "generated_at": datetime.now().isoformat(),
             "source": "database",
-            "profile": self._build_profile_section(profile),
-            "analysis": self._build_analysis_section(analysis),
+            "language": lang,
+            "profile": self._build_profile_section(profile, lang),
+            "analysis": self._build_analysis_section(analysis, lang),
             "ml_prediction": self._build_ml_section(ml_from_db),
             "xai": self._build_xai_section(None),
             "alerts": self._build_alerts_section(analysis.get("alerts")),
@@ -231,6 +271,7 @@ class ReportEngine:
                 clinical_summary=None,
                 health_plan=health_plan,
                 predictions=self._extract_predictions_from_db(predictions),
+                language=lang,
             ),
         }
 
@@ -238,17 +279,17 @@ class ReportEngine:
     # Section builders
     # ──────────────────────────────────────────────
 
-    def _build_profile_section(self, profile):
+    def _build_profile_section(self, profile, language="es"):
         p = profile or {}
         return {
             "age": p.get("age"),
             "gender": p.get("gender"),
-            "gender_label": GENDER_LABELS.get(p.get("gender"), p.get("gender")),
+            "gender_label": _label_map(GENDER_LABELS, p.get("gender"), language),
             "height_cm": p.get("height_cm"),
             "weight_kg": p.get("weight_kg"),
             "activity_level": p.get("activity_level"),
-            "activity_label": ACTIVITY_LABELS.get(
-                p.get("activity_level"), p.get("activity_level")
+            "activity_label": _label_map(
+                ACTIVITY_LABELS, p.get("activity_level"), language
             ),
             "sleep_hours": p.get("sleep_hours"),
             "smokes": p.get("smokes", False),
@@ -265,15 +306,16 @@ class ReportEngine:
             "email": p.get("email"),
         }
 
-    def _build_analysis_section(self, analysis):
+    def _build_analysis_section(self, analysis, language="es"):
         a = analysis or {}
         bmi_category = a.get("bmi_category", "normal")
+        desc_map = BMI_CATEGORY_DESCRIPTIONS.get(_lang(language), BMI_CATEGORY_DESCRIPTIONS["es"])
         return {
             "health_score": a.get("health_score", 0),
             "bmi": a.get("bmi", 0),
             "bmi_category": bmi_category,
-            "bmi_label": BMI_CATEGORY_LABELS.get(bmi_category, bmi_category),
-            "bmi_description": BMI_CATEGORY_DESCRIPTIONS.get(bmi_category, ""),
+            "bmi_label": get_bmi_category_label(bmi_category, language),
+            "bmi_description": desc_map.get(bmi_category, ""),
             "bmr": a.get("bmr", 0),
             "tdee": a.get("tdee", 0),
             "health_risk": a.get("health_risk", ""),
@@ -466,67 +508,86 @@ class ReportEngine:
     def _build_narratives(
         self, profile, analysis, ml_prediction, xai, alerts,
         goals, clinical_summary, health_plan, predictions,
+        language="es",
     ):
         """
-        Genera narratives interpretativas centralizadas.
-
-        Cada narrative contiene:
-          - title: título de la sección
-          - text: texto interpretativo (template-based, reemplazable por LLM)
-          - type: categoría de la narrative
-          - llm_replaceable: True si un LLM puede generar este texto
-          - context: datos crudos que un LLM usaría como contexto
+        Genera narratives interpretativas centralizadas (ES/EN).
         """
+        lang = _lang(language)
         return {
             "clinical_summary": self._narrative_clinical_summary(
-                analysis, clinical_summary
+                analysis, clinical_summary, lang
             ),
-            "bmi_interpretation": self._narrative_bmi_interpretation(analysis),
+            "bmi_interpretation": self._narrative_bmi_interpretation(analysis, lang),
             "risk_interpretation": self._narrative_risk_interpretation(
-                analysis, alerts
+                analysis, alerts, lang
             ),
             "ml_interpretation": self._narrative_ml_interpretation(
-                ml_prediction, xai
+                ml_prediction, xai, lang
             ),
             "recommendations_summary": self._narrative_recommendations(
-                goals, alerts, health_plan
+                goals, alerts, health_plan, lang
             ),
-            "prognosis": self._narrative_prognosis(predictions, analysis, xai),
+            "prognosis": self._narrative_prognosis(
+                predictions, analysis, xai, lang
+            ),
         }
 
-    def _narrative_clinical_summary(self, analysis, clinical_summary):
+    def _narrative_clinical_summary(self, analysis, clinical_summary, language="es"):
         a = analysis or {}
+        t = get_translations(language)
         health_score = a.get("health_score", 0)
         severity = a.get("health_risk", "")
         bmi = a.get("bmi", 0)
         bmi_category = a.get("bmi_category", "normal")
-        bmi_label = BMI_CATEGORY_LABELS.get(bmi_category, "")
+        bmi_label = get_bmi_category_label(bmi_category, language)
         fitness = a.get("fitness_level", "")
 
         if clinical_summary:
             text = clinical_summary.get("description", "")
-            title = clinical_summary.get("title", "Resumen Clínico")
+            title = clinical_summary.get("title", t["narrative_summary"])
         else:
-            title = "Resumen Clínico"
-            if health_score >= 80:
-                text = (
-                    f"El paciente presenta un buen estado de salud con un "
-                    f"puntaje de {health_score}/100. "
-                )
-            elif health_score >= 60:
-                text = (
-                    f"El paciente presenta un estado de salud moderado con un "
-                    f"puntaje de {health_score}/100. "
+            title = t["narrative_summary"]
+            if language == "en":
+                if health_score >= 80:
+                    text = (
+                        f"The patient shows good health status with a "
+                        f"score of {health_score}/100. "
+                    )
+                elif health_score >= 60:
+                    text = (
+                        f"The patient shows moderate health status with a "
+                        f"score of {health_score}/100. "
+                    )
+                else:
+                    text = (
+                        f"The patient shows a health status that requires "
+                        f"attention, with a score of {health_score}/100. "
+                    )
+                text += (
+                    f"Clinical risk level is '{severity}'. "
+                    f"BMI classification: {bmi_label} (BMI {bmi})."
                 )
             else:
-                text = (
-                    f"El paciente presenta un estado de salud que requiere "
-                    f"atención, con un puntaje de {health_score}/100. "
+                if health_score >= 80:
+                    text = (
+                        f"El paciente presenta un buen estado de salud con un "
+                        f"puntaje de {health_score}/100. "
+                    )
+                elif health_score >= 60:
+                    text = (
+                        f"El paciente presenta un estado de salud moderado con un "
+                        f"puntaje de {health_score}/100. "
+                    )
+                else:
+                    text = (
+                        f"El paciente presenta un estado de salud que requiere "
+                        f"atención, con un puntaje de {health_score}/100. "
+                    )
+                text += (
+                    f"El nivel de riesgo clínico es '{severity}'. "
+                    f"Clasificación BMI: {bmi_label} (IMC {bmi})."
                 )
-            text += (
-                f"El nivel de riesgo clínico es '{severity}'. "
-                f"Clasificación BMI: {bmi_label} (IMC {bmi})."
-            )
 
         return {
             "title": title,
@@ -544,17 +605,24 @@ class ReportEngine:
             },
         }
 
-    def _narrative_bmi_interpretation(self, analysis):
+    def _narrative_bmi_interpretation(self, analysis, language="es"):
         a = analysis or {}
+        t = get_translations(language)
         bmi = a.get("bmi", 0)
         bmi_category = a.get("bmi_category", "normal")
-        bmi_label = BMI_CATEGORY_LABELS.get(bmi_category, "")
-        bmi_desc = BMI_CATEGORY_DESCRIPTIONS.get(bmi_category, "")
+        bmi_label = get_bmi_category_label(bmi_category, language)
+        desc_map = BMI_CATEGORY_DESCRIPTIONS.get(
+            _lang(language), BMI_CATEGORY_DESCRIPTIONS["es"]
+        )
+        bmi_desc = desc_map.get(bmi_category, "")
 
-        text = f"El IMC actual es {bmi}, correspondiente a {bmi_label}. {bmi_desc}"
+        if language == "en":
+            text = f"Current BMI is {bmi}, corresponding to {bmi_label}. {bmi_desc}"
+        else:
+            text = f"El IMC actual es {bmi}, correspondiente a {bmi_label}. {bmi_desc}"
 
         return {
-            "title": "Interpretación del IMC",
+            "title": t["narrative_bmi"],
             "text": text,
             "type": "bmi_interpretation",
             "llm_replaceable": True,
@@ -566,20 +634,24 @@ class ReportEngine:
             },
         }
 
-    def _narrative_risk_interpretation(self, analysis, alerts):
+    def _narrative_risk_interpretation(self, analysis, alerts, language="es"):
         a = analysis or {}
+        t = get_translations(language)
         severity = a.get("health_risk", "")
         health_score = a.get("health_score", 0)
         severity_lower = severity.lower() if severity else "medium"
+        sev_map = SEVERITY_DESCRIPTIONS.get(
+            _lang(language), SEVERITY_DESCRIPTIONS["es"]
+        )
 
-        risk_text = SEVERITY_DESCRIPTIONS.get(severity_lower, "")
+        risk_text = sev_map.get(severity_lower, "")
         if not risk_text:
-            for key in SEVERITY_DESCRIPTIONS:
+            for key in sev_map:
                 if key in severity_lower:
-                    risk_text = SEVERITY_DESCRIPTIONS[key]
+                    risk_text = sev_map[key]
                     break
             if not risk_text:
-                risk_text = SEVERITY_DESCRIPTIONS["medium"]
+                risk_text = sev_map["medium"]
 
         high_alerts = [
             al for al in (alerts or []) if al.get("priority") == "high"
@@ -592,7 +664,7 @@ class ReportEngine:
         text = f"{risk_text}{alert_note}"
 
         return {
-            "title": "Interpretación del Riesgo",
+            "title": t["narrative_risk"],
             "text": text,
             "type": "risk_interpretation",
             "llm_replaceable": True,
@@ -605,28 +677,40 @@ class ReportEngine:
             },
         }
 
-    def _narrative_ml_interpretation(self, ml_prediction, xai):
+    def _narrative_ml_interpretation(self, ml_prediction, xai, language="es"):
         ml = ml_prediction or {}
         x = xai or {}
+        t = get_translations(language)
 
         predicted_class = ml.get("predicted_class") or ""
         confidence = ml.get("confidence", 0)
         ml_available = bool(predicted_class)
 
         if not ml_available:
+            text = (
+                "No ML model prediction is available for this analysis."
+                if language == "en"
+                else "No hay predicción del modelo ML disponible para este análisis."
+            )
             return {
-                "title": "Interpretación del Modelo ML",
-                "text": "No hay predicción del modelo ML disponible para este análisis.",
+                "title": t["narrative_ml"],
+                "text": text,
                 "type": "ml_interpretation",
                 "llm_replaceable": True,
                 "context": {"available": False},
             }
 
         class_label = predicted_class.replace("_", " ") if predicted_class else ""
-        text = (
-            f"El modelo ML clasifica al paciente como '{class_label}' "
-            f"con un {confidence}% de confianza."
-        )
+        if language == "en":
+            text = (
+                f"The ML model classifies the patient as '{class_label}' "
+                f"with {confidence}% confidence."
+            )
+        else:
+            text = (
+                f"El modelo ML clasifica al paciente como '{class_label}' "
+                f"con un {confidence}% de confianza."
+            )
 
         if x.get("summary"):
             text += f" {x['summary']}"
@@ -634,7 +718,7 @@ class ReportEngine:
             text += f" {x['main_reason']}"
 
         return {
-            "title": "Interpretación del Modelo ML",
+            "title": t["narrative_ml"],
             "text": text,
             "type": "ml_interpretation",
             "llm_replaceable": True,
@@ -649,12 +733,16 @@ class ReportEngine:
             },
         }
 
-    def _narrative_recommendations(self, goals, alerts, health_plan):
+    def _narrative_recommendations(self, goals, alerts, health_plan, language="es"):
+        t = get_translations(language)
         parts = []
 
         goals_list = goals or []
         if goals_list:
-            parts.append("Objetivos semanales recomendados:")
+            parts.append(
+                "Recommended weekly objectives:" if language == "en"
+                else "Objetivos semanales recomendados:"
+            )
             for g in goals_list[:5]:
                 parts.append(f"- {g}")
 
@@ -662,7 +750,9 @@ class ReportEngine:
             al for al in (alerts or []) if al.get("priority") == "high"
         ]
         if high_alerts:
-            parts.append("Atenciones prioritarias:")
+            parts.append(
+                "Priority concerns:" if language == "en" else "Atenciones prioritarias:"
+            )
             for al in high_alerts[:2]:
                 msg = al.get("message", "")
                 if msg:
@@ -673,19 +763,24 @@ class ReportEngine:
             nutrition = health_plan.get("nutrition") or {}
         recs = nutrition.get("recommendations") or []
         if recs:
-            parts.append("Recomendaciones nutricionales:")
+            parts.append(
+                "Nutrition recommendations:" if language == "en"
+                else "Recomendaciones nutricionales:"
+            )
             for r in recs[:3]:
                 parts.append(f"- {r}")
 
         if not parts:
             parts.append(
-                "Mantener hábitos saludables y realizar seguimiento periódico."
+                "Maintain healthy habits and schedule periodic follow-up."
+                if language == "en"
+                else "Mantener hábitos saludables y realizar seguimiento periódico."
             )
 
         text = "\n".join(parts)
 
         return {
-            "title": "Resumen de Recomendaciones",
+            "title": t["narrative_recs"],
             "text": text,
             "type": "recommendations_summary",
             "llm_replaceable": True,
@@ -698,16 +793,16 @@ class ReportEngine:
             },
         }
 
-    def _narrative_prognosis(self, predictions, analysis, xai):
+    def _narrative_prognosis(self, predictions, analysis, xai, language="es"):
         p = predictions or {}
         preds = p.get("predictions_data", {}).get("predictions") or {}
         a = analysis or {}
         x = xai or {}
+        t = get_translations(language)
 
         six_months = preds.get("6_months", {}).get("weight_kg")
         one_month = preds.get("1_month", {}).get("weight_kg")
         current_bmi = a.get("bmi", 0)
-        height_cm = a.get("height_cm") or (a.get("bmi") and 0)
         bmi_category = a.get("bmi_category", "normal")
         text = ""
 
@@ -715,26 +810,47 @@ class ReportEngine:
             sf = x["scenario_follow"]
             text = sf.get("evolution_text", "")
             if sf.get("projected_category"):
-                text += (
-                    f" Proyectado a 6 meses: IMC {sf.get('projected_bmi', '')} "
-                    f"({sf.get('projected_category', '')})."
+                proj_label = get_bmi_category_label(
+                    sf.get("projected_category"), language
                 )
+                if language == "en":
+                    text += (
+                        f" Projected at 6 months: BMI {sf.get('projected_bmi', '')} "
+                        f"({proj_label})."
+                    )
+                else:
+                    text += (
+                        f" Proyectado a 6 meses: IMC {sf.get('projected_bmi', '')} "
+                        f"({proj_label})."
+                    )
 
         if not text and six_months and six_months >= 30:
-            text = (
-                f"Proyección a 6 meses: peso estimado {six_months} kg. "
-                f"Siguiendo el plan actual, se espera estabilización "
-                f"o mejora gradual."
-            )
+            if language == "en":
+                text = (
+                    f"6-month projection: estimated weight {six_months} kg. "
+                    f"Following the current plan, stabilization or gradual "
+                    f"improvement is expected."
+                )
+            else:
+                text = (
+                    f"Proyección a 6 meses: peso estimado {six_months} kg. "
+                    f"Siguiendo el plan actual, se espera estabilización "
+                    f"o mejora gradual."
+                )
 
         if not text:
             text = (
-                "No hay suficientes datos para generar un pronóstico. "
-                "Se recomienda un nuevo análisis para establecer proyecciones."
+                "There is not enough data to generate a prognosis. "
+                "A new analysis is recommended to establish projections."
+                if language == "en"
+                else (
+                    "No hay suficientes datos para generar un pronóstico. "
+                    "Se recomienda un nuevo análisis para establecer proyecciones."
+                )
             )
 
         return {
-            "title": "Pronóstico",
+            "title": t["narrative_prognosis"],
             "text": text,
             "type": "prognosis",
             "llm_replaceable": True,
@@ -748,5 +864,3 @@ class ReportEngine:
                 "scenario_ignore": x.get("scenario_ignore") if x else None,
             },
         }
-
-

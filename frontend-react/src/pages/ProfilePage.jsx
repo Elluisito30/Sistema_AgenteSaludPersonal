@@ -43,12 +43,13 @@ function ProfilePage() {
     if (res.success) {
       setMessage({ type: 'success', text: t('profilePage.saved') });
       setProfile(data);
-      loadAnalysis();
+      try { await loadAnalysis(); } catch (_) { /* optional */ }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      setMessage({ type: 'error', text: res.error });
+      setMessage({ type: 'error', text: res.error || t('common.error') });
     }
     setSaving(false);
-    setTimeout(() => setMessage(null), 3000);
+    setTimeout(() => setMessage(null), 5000);
   };
 
   const section = (title) => ({
@@ -68,12 +69,28 @@ function ProfilePage() {
   );
 
   return (
-    <div style={{ maxWidth: 600, animation: 'fadeIn 0.3s ease' }}>
+    <div className="page-full" style={{ animation: 'fadeIn 0.3s ease' }}>
       <h1 className="page-title">👤 {t('profilePage.title')}</h1>
       <p className="page-subtitle">{t('profilePage.subtitle')}</p>
 
       {message && (
-        <div className={`message ${message.type}`} style={{ marginBottom: 16 }}>
+        <div
+          role="status"
+          style={{
+            marginBottom: 16,
+            padding: '14px 18px',
+            borderRadius: 12,
+            fontSize: 14,
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            background: message.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+            color: message.type === 'success' ? '#059669' : '#dc2626',
+            border: `1px solid ${message.type === 'success' ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
+          }}
+        >
+          <span>{message.type === 'success' ? '✅' : '✕'}</span>
           {message.text}
         </div>
       )}

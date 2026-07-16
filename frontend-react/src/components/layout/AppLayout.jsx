@@ -12,7 +12,7 @@ const AnalysisContext = createContext();
 export const useAnalysis = () => useContext(AnalysisContext);
 
 function AppLayout() {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const { t } = useTranslation();
   const { apiRequest } = useApi();
   const location = useLocation();
@@ -22,11 +22,12 @@ function AppLayout() {
   const [xaiData, setXaiData] = useState(null);
 
   const loadAnalysis = async () => {
+    if (!token) return;
     try {
-      const histRes = await apiRequest('/api/history?limit=1', 'GET', null, null);
+      const histRes = await apiRequest('/api/history?limit=1', 'GET', null, token);
       if (!histRes.success || !histRes.data?.length) return;
       const id = histRes.data[0].id;
-      const detailRes = await apiRequest(`/api/analysis/${id}`, 'GET', null, null);
+      const detailRes = await apiRequest(`/api/analysis/${id}`, 'GET', null, token);
       if (detailRes.success) {
         setAnalysis(detailRes.data);
         setLatestPrediction(detailRes.data?.ml_prediction || null);
@@ -39,7 +40,7 @@ function AppLayout() {
 
   useEffect(() => {
     loadAnalysis();
-  }, []);
+  }, [token]);
 
   const isOnboarding = location.pathname === '/onboarding';
 
@@ -52,7 +53,7 @@ function AppLayout() {
   }
 
   return (
-    <AnalysisContext.Provider value={{ analysis, latestPrediction, xaiData, loadAnalysis }}>
+    <AnalysisContext.Provider value={{ analysis, setAnalysis, latestPrediction, setLatestPrediction, xaiData, setXaiData, loadAnalysis }}>
       <div className="app-layout">
         <aside className="sidebar">
           <div className="sidebar-header">

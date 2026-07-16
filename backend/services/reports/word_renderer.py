@@ -45,7 +45,9 @@ def generate_health_word(report_data, plot_bytes=None, language="es"):
     profile_info = format_profile_summary(report_data.get("profile"))
     analysis = report_data.get("analysis", {})
     risk_badge = format_risk_badge(analysis.get("health_risk"), language)
-    bmi_ind = format_bmi_indicator(analysis.get("bmi"), analysis.get("bmi_category"))
+    bmi_ind = format_bmi_indicator(
+        analysis.get("bmi"), analysis.get("bmi_category"), language
+    )
     c_rgb = risk_badge["color_rgb"]
 
     # Titulo
@@ -87,7 +89,7 @@ def generate_health_word(report_data, plot_bytes=None, language="es"):
     if all_alerts:
         doc.add_heading(t["alerts"], level=1)
         rows = [[al.get("type", ""), al.get("message", ""), al.get("priority", "")] for al in all_alerts[:6]]
-        _add_table(doc, [t["type"], "Mensaje", t["value"]], rows)
+        _add_table(doc, [t["type"], t["message"], t["value"]], rows)
 
     # 4. Objetivos
     goals = report_data.get("goals", {}).get("all", [])
@@ -108,11 +110,11 @@ def generate_health_word(report_data, plot_bytes=None, language="es"):
     ml = report_data.get("ml_prediction", {})
     if ml.get("available"):
         doc.add_heading(t["ml_prediction"], level=1)
-        conf = format_confidence_badge(ml.get("confidence", 0))
+        conf = format_confidence_badge(ml.get("confidence", 0), language)
         _add_table(doc,
             [t["metric"], t["value"]],
             [
-                ["Clasificacion", ml.get("predicted_class_label", "")],
+                [t["classification"], ml.get("predicted_class_label", "")],
                 [t["confidence"], conf["label"]],
                 [t["model"], ml.get("model_used", "")],
             ],
@@ -160,17 +162,17 @@ def generate_predictions_word(report_data, language="es"):
         rows = [[p["label"], f"{p['weight_kg']} kg"] for p in wp["periods"]]
         _add_table(doc, [t["period"], t["weight"]], rows)
     else:
-        doc.add_paragraph("No hay datos de proyeccion disponibles.")
+        doc.add_paragraph(t["no_projection_data"])
 
     # ML
     ml = report_data.get("ml_prediction", {})
     if ml.get("available"):
         doc.add_heading(t["ml_prediction"], level=1)
-        conf = format_confidence_badge(ml.get("confidence", 0))
+        conf = format_confidence_badge(ml.get("confidence", 0), language)
         _add_table(doc,
             [t["metric"], t["value"]],
             [
-                ["Clasificacion", ml.get("predicted_class_label", "")],
+                [t["classification"], ml.get("predicted_class_label", "")],
                 [t["confidence"], conf["label"]],
                 [t["model"], ml.get("model_used", "")],
             ],

@@ -77,6 +77,14 @@
     "analyzing": "Analyzing...",
     "analyze": "🤖 Analyze my Health"
   },
+  "dashboard": {
+    "profileSummary": "Your profile data",
+    "profileReadonlyHint": "These data come from your profile (Onboarding / My Profile). Here they are only used to generate the analysis; to edit them go to My Profile.",
+    "noProfile": "You don't have a health profile yet. Complete it first to run an analysis.",
+    "goToProfile": "Go to My Profile",
+    "editProfile": "✏️ Edit profile",
+    "noGoals": "No goals defined"
+  },
   "goals": {
     "weightLoss": "📉 Weight Loss",
     "muscleGain": "💪 Muscle Gain",
@@ -365,6 +373,9 @@
     "water": "Daily water intake (liters)",
     "analyzing": "Analyzing your health...",
     "profileSaved": "Profile saved successfully!",
+    "noGoalsSelected": "None selected",
+    "years": "years",
+    "sleepLabel": "sleep",
     "errorSaving": "Error saving. Try again."
   },
   "journey": {
@@ -392,6 +403,13 @@
     "logLunch": "Log Lunch",
     "logDinner": "Log Dinner",
     "viewReports": "View Reports",
+    "profileReadyTitle": "Your profile is ready",
+    "profileReadyDesc": "You completed the setup. Go to the Dashboard to analyze your health with your data already loaded (read-only).",
+    "goToAnalyze": "Go to Analyze my Health",
+    "repeatOnboarding": "Return to setup wizard",
+    "analysisReadyTitle": "Your analysis is ready",
+    "analysisReadyDesc": "You already have an analysis. Go to the Dashboard to view your results. If you need to change data, use My Profile.",
+    "goToDashboard": "Go to Dashboard",
     "weeklyGoals": "Weekly Goals",
     "noWeeklyGoals": "You don't have weekly goals yet.",
     "completeAnalysis": "Complete your analysis to get personalized recommendations.",

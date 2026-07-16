@@ -369,7 +369,8 @@ body {
    MAIN CONTENT
    ============================================ */
 
-.main-content {
+/* Legacy layout — scoped to avoid overriding AppLayout .main-content */
+.dashboard-container .main-content {
   flex: 1;
   margin-left: 280px;
   padding: 40px;
@@ -391,7 +392,8 @@ body {
 }
 
 .tab-content {
-  max-width: 1400px;
+  max-width: none;
+  width: 100%;
   animation: fadeIn 0.35s ease;
 }
 
@@ -608,6 +610,9 @@ body {
   border-radius: var(--radius-2xl);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-md);
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .profile-section h3 {
@@ -618,6 +623,98 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.profile-readonly-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: -12px 0 16px;
+  line-height: 1.45;
+}
+
+.profile-form-readonly input:disabled,
+.profile-form-readonly select:disabled,
+.profile-form-readonly input[readonly] {
+  opacity: 0.95;
+  cursor: not-allowed;
+  background: var(--surface-light);
+  color: var(--text);
+}
+
+.profile-form-readonly .form-check input:disabled {
+  cursor: not-allowed;
+}
+
+.profile-readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.profile-readonly-section {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  margin-top: 2px;
+}
+
+.profile-readonly > .profile-readonly-section:first-child {
+  margin-top: 0;
+}
+
+.profile-readonly-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+
+.profile-readonly-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--surface-light);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.profile-readonly-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.profile-readonly-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.profile-readonly-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.profile-section .profile-readonly-hint {
+  margin-bottom: 14px;
+}
+
+.analysis-grid > div:first-child {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .profile-form {
@@ -779,15 +876,17 @@ body {
 
 .analysis-grid {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
   gap: 24px;
   margin-bottom: 32px;
   align-items: start;
+  width: 100%;
 }
 
 .analysis-results {
   position: sticky;
   top: 20px;
+  min-width: 0;
 }
 
 /* ============================================
@@ -1562,12 +1661,12 @@ body {
    ============================================ */
 
 @media (min-width: 1440px) {
-  .main-content {
+.dashboard-container .main-content {
     padding: 48px 60px;
   }
 
   .tab-content {
-    max-width: 1600px;
+    max-width: none;
   }
 
   .analysis-top-cards {
@@ -1588,12 +1687,12 @@ body {
    ============================================ */
 
 @media (max-width: 1024px) {
-  .main-content {
+.dashboard-container .main-content {
     padding: 32px;
   }
 
   .analysis-grid {
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
     gap: 20px;
   }
 
@@ -1722,7 +1821,7 @@ body {
     flex-shrink: 0;
   }
 
-  .main-content {
+.dashboard-container .main-content {
     margin-left: 0;
     padding: 24px 16px;
   }
@@ -1895,7 +1994,7 @@ body {
    ============================================ */
 
 @media (max-width: 375px) {
-  .main-content {
+.dashboard-container .main-content {
     padding: 16px 12px;
   }
 
@@ -1958,7 +2057,7 @@ body {
    ============================================ */
 
 @media (max-width: 320px) {
-  .main-content {
+.dashboard-container .main-content {
     padding: 12px 10px;
   }
 
@@ -2870,7 +2969,20 @@ html.dark .empty-state p {
 }
 
 .main-content-dashboard {
-  padding: 24px 32px;
+  padding: 16px 8px 32px;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+.main-content-dashboard .tab-content {
+  max-width: none;
+  width: 100%;
+}
+
+.main-content-dashboard .page-title,
+.main-content-dashboard .page-subtitle {
+  max-width: none;
 }
 
 @media (max-width: 768px) {

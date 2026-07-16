@@ -49,6 +49,7 @@ TRANSLATIONS = {
         "weight": "Peso (kg)",
         "metric": "Metrica",
         "value": "Valor",
+        "metrics": "Metricas",
         "clinical_factors": "Factores de Riesgo Documentados",
         "type": "Tipo",
         "conditions": "Condiciones (Carga Negativa)",
@@ -78,14 +79,18 @@ TRANSLATIONS = {
         "patient_evaluation": "Evaluacion del Paciente: Confidencial",
         "alerts": "Alertas Clinicas",
         "objectives": "Objetivos Semanales",
+        "objective": "Objetivo",
         "ml_prediction": "Prediccion del Modelo ML",
         "xai_explanation": "Explicacion del Analisis Inteligente",
         "confidence": "Confianza",
         "model": "Modelo",
+        "classification": "Clasificacion",
+        "scenarios": "Escenarios",
         "scenario_follow": "Si sigue el plan",
         "scenario_ignore": "Si no sigue el plan",
         "projected_weight": "Peso Proyectado",
         "projected_bmi": "IMC Proyectado",
+        "projected_weight_label": "Peso proyectado",
         "important_features": "Factores Mas Influyentes",
         "feature": "Factor",
         "importance": "Importancia",
@@ -95,9 +100,25 @@ TRANSLATIONS = {
         "narrative_ml": "Interpretacion del Modelo ML",
         "narrative_recs": "Recomendaciones",
         "narrative_prognosis": "Pronostico",
+        "narratives": "Narrativas",
+        "section": "Seccion",
+        "text": "Texto",
+        "message": "Mensaje",
+        "date": "Fecha",
+        "no_projection_data": "No hay datos de proyeccion disponibles.",
         "high": "Alto",
         "medium": "Medio",
         "low": "Bajo",
+        "confidence_high": "alta",
+        "confidence_medium": "media",
+        "confidence_low": "baja",
+        "confidence_very_low": "muy baja",
+        "risk_critical": "Critico",
+        "risk_high": "En Riesgo",
+        "risk_medium": "Aceptable",
+        "risk_low": "Bueno",
+        "risk_optimal": "Optimo",
+        "risk_unknown": "Sin Datos",
     },
     "en": {
         "app_name": "HEALTH AI",
@@ -138,6 +159,7 @@ TRANSLATIONS = {
         "weight": "Weight (kg)",
         "metric": "Metric",
         "value": "Value",
+        "metrics": "Metrics",
         "clinical_factors": "Documented Risk Factors",
         "type": "Type",
         "conditions": "Conditions (Negative Load)",
@@ -167,14 +189,18 @@ TRANSLATIONS = {
         "patient_evaluation": "Patient Evaluation: Confidential",
         "alerts": "Clinical Alerts",
         "objectives": "Weekly Objectives",
+        "objective": "Objective",
         "ml_prediction": "ML Model Prediction",
         "xai_explanation": "Intelligent Analysis Explanation",
         "confidence": "Confidence",
         "model": "Model",
+        "classification": "Classification",
+        "scenarios": "Scenarios",
         "scenario_follow": "If you follow the plan",
         "scenario_ignore": "If you don't follow the plan",
         "projected_weight": "Projected Weight",
         "projected_bmi": "Projected BMI",
+        "projected_weight_label": "Projected weight",
         "important_features": "Most Influential Factors",
         "feature": "Feature",
         "importance": "Importance",
@@ -184,9 +210,25 @@ TRANSLATIONS = {
         "narrative_ml": "ML Model Interpretation",
         "narrative_recs": "Recommendations",
         "narrative_prognosis": "Prognosis",
+        "narratives": "Narratives",
+        "section": "Section",
+        "text": "Text",
+        "message": "Message",
+        "date": "Date",
+        "no_projection_data": "No projection data available.",
         "high": "High",
         "medium": "Medium",
         "low": "Low",
+        "confidence_high": "high",
+        "confidence_medium": "medium",
+        "confidence_low": "low",
+        "confidence_very_low": "very low",
+        "risk_critical": "Critical",
+        "risk_high": "At Risk",
+        "risk_medium": "Acceptable",
+        "risk_low": "Good",
+        "risk_optimal": "Optimal",
+        "risk_unknown": "No Data",
     },
 }
 
@@ -200,11 +242,19 @@ def get_translations(language="es"):
 # ==========================================
 
 RISK_COLORS = {
-    "critical": {"hex": "#e74c3c", "rgb": (231, 76, 60), "name": "Critico"},
-    "high": {"hex": "#e67e22", "rgb": (230, 126, 34), "name": "En Riesgo"},
-    "medium": {"hex": "#f1c40f", "rgb": (241, 196, 15), "name": "Aceptable"},
-    "low": {"hex": "#2ecc71", "rgb": (46, 204, 113), "name": "Bueno"},
-    "optimal": {"hex": "#2ecc71", "rgb": (46, 204, 113), "name": "Optimo"},
+    "critical": {"hex": "#e74c3c", "rgb": (231, 76, 60)},
+    "high": {"hex": "#e67e22", "rgb": (230, 126, 34)},
+    "medium": {"hex": "#f1c40f", "rgb": (241, 196, 15)},
+    "low": {"hex": "#2ecc71", "rgb": (46, 204, 113)},
+    "optimal": {"hex": "#2ecc71", "rgb": (46, 204, 113)},
+}
+
+RISK_LEVEL_LABELS = {
+    "critical": {"es": "Critico", "en": "Critical"},
+    "high": {"es": "En Riesgo", "en": "At Risk"},
+    "medium": {"es": "Aceptable", "en": "Acceptable"},
+    "low": {"es": "Bueno", "en": "Good"},
+    "optimal": {"es": "Optimo", "en": "Optimal"},
 }
 
 RISK_KEYWORD_MAP = {
@@ -216,19 +266,51 @@ RISK_KEYWORD_MAP = {
     "Acceptable": "medium",
     "Bueno": "low",
     "Good": "low",
+    "Optimo": "optimal",
+    "Optimal": "optimal",
+    "critical": "critical",
+    "high": "high",
+    "medium": "medium",
+    "low": "low",
+    "optimal": "optimal",
 }
 
 
-def get_risk_colors(risk_level):
-    """Retorna colores segun el nivel de riesgo."""
+def resolve_risk_key(risk_level):
+    """Normaliza un nivel de riesgo a clave canónica (critical/high/medium/low/optimal)."""
     if not risk_level:
-        return {"hex": "#7f8c8d", "rgb": (127, 140, 141), "name": "Sin Datos"}
-
+        return None
+    text = str(risk_level)
     for keyword, key in RISK_KEYWORD_MAP.items():
-        if keyword in str(risk_level):
-            return RISK_COLORS[key]
+        if keyword.lower() in text.lower() or keyword == text:
+            return key
+    lower = text.lower().strip()
+    if lower in RISK_COLORS:
+        return lower
+    return None
 
-    return {"hex": "#7f8c8d", "rgb": (127, 140, 141), "name": "Sin Datos"}
+
+def get_risk_label(risk_level, language="es"):
+    """Label traducido para un nivel de riesgo."""
+    key = resolve_risk_key(risk_level)
+    lang = language if language in ("es", "en") else "es"
+    if key and key in RISK_LEVEL_LABELS:
+        return RISK_LEVEL_LABELS[key][lang]
+    t = get_translations(lang)
+    return t["risk_unknown"]
+
+
+def get_risk_colors(risk_level, language="es"):
+    """Retorna colores segun el nivel de riesgo, con label traducido."""
+    key = resolve_risk_key(risk_level)
+    lang = language if language in ("es", "en") else "es"
+    if key and key in RISK_COLORS:
+        colors = dict(RISK_COLORS[key])
+        colors["name"] = RISK_LEVEL_LABELS[key][lang]
+        colors["key"] = key
+        return colors
+    t = get_translations(lang)
+    return {"hex": "#7f8c8d", "rgb": (127, 140, 141), "name": t["risk_unknown"], "key": None}
 
 
 # ==========================================
@@ -249,7 +331,10 @@ ALERT_PRIORITY_COLORS = {
 COLORS = {
     "primary_dark": "#2c3e50",
     "primary_medium": "#34495e",
+    "primary_accent": "#1abc9c",
     "background_light": "#ecf0f1",
+    "background_soft": "#f7f9fb",
+    "grid_soft": "#d5dbe3",
     "white": "#ffffff",
     "black": "#000000",
     "text_dark": "#2c3e50",
@@ -266,12 +351,12 @@ COLORS = {
 # ==========================================
 
 BMI_CATEGORY_LABELS = {
-    "severely_underweight": "Desnutricion severa",
-    "underweight": "Bajo peso",
-    "normal": "Peso normal",
-    "overweight": "Sobrepeso",
-    "obese_1": "Obesidad grado I",
-    "obese_2_3": "Obesidad grado II/III",
+    "severely_underweight": {"es": "Desnutricion severa", "en": "Severely underweight"},
+    "underweight": {"es": "Bajo peso", "en": "Underweight"},
+    "normal": {"es": "Peso normal", "en": "Normal weight"},
+    "overweight": {"es": "Sobrepeso", "en": "Overweight"},
+    "obese_1": {"es": "Obesidad grado I", "en": "Obesity class I"},
+    "obese_2_3": {"es": "Obesidad grado II/III", "en": "Obesity class II/III"},
 }
 
 BMI_CATEGORY_COLORS = {
@@ -282,3 +367,14 @@ BMI_CATEGORY_COLORS = {
     "obese_1": "#e67e22",
     "obese_2_3": "#e74c3c",
 }
+
+
+def get_bmi_category_label(category, language="es"):
+    """Retorna la etiqueta BMI traducida para la categoría dada."""
+    lang = language if language in ("es", "en") else "es"
+    entry = BMI_CATEGORY_LABELS.get(category)
+    if not entry:
+        return category or ""
+    if isinstance(entry, dict):
+        return entry.get(lang) or entry.get("es") or category
+    return entry
