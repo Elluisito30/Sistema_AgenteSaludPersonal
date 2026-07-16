@@ -34,12 +34,32 @@ function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [data, setData] = useState({
     age: '', gender: '', height_cm: '', weight_kg: '',
     activity_level: '', sleep_hours: 7, smokes: false,
     family_history: false, health_goals: [],
     favc: 'Sometimes', fcvc: 2, ch2o: 2,
   });
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      const journeyRes = await apiRequest('/api/journey/summary', 'GET', null, token);
+      if (journeyRes.success && journeyRes.data?.has_analysis) {
+        navigate('/dashboard');
+      }
+      setLoading(false);
+    };
+    checkStatus();
+  }, [token, apiRequest, navigate]);
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--background)' }}>
+        <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>{t('common.loading')}</div>
+      </div>
+    );
+  }
 
   const update = (field, value) => setData(prev => ({ ...prev, [field]: value }));
 

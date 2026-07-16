@@ -10,7 +10,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict
-from datetime import datetime, timedelta
 import jwt
 import bcrypt
 import requests
@@ -352,7 +351,7 @@ def create_profile(profile: HealthProfile, user_id: int = Depends(verify_token))
                   profile.health_goals, profile.family_history, profile.favc,
                   profile.fcvc, profile.ch2o))
     
-    return {"message": "Perfil actualizado exitosamente"}
+    return {"message": "✅ Perfil actualizado exitosamente"}
 
 @app.get("/api/profile")
 def get_profile(user_id: int = Depends(verify_token)):
@@ -560,16 +559,19 @@ def analyze_health(user_id: int = Depends(verify_token)):
                 (user_id, bmi, bmi_category, bmr, tdee, health_score,
                  health_risk, fitness_level, health_plan, alerts,
                  weekly_goals, next_checkup, confidence_score,
-                 nutrient_recommendations, predicted_improvements, analyzed_at)
+                 nutrient_recommendations, predicted_improvements,
+                 ml_prediction, xai, analyzed_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb,
-                        %s::jsonb, %s, %s::date, %s, %s::jsonb, %s::jsonb, NOW())
+                        %s::jsonb, %s::jsonb, %s::date, %s, %s::jsonb, %s::jsonb,
+                        %s::jsonb, %s::jsonb, NOW())
             """, (
                 user_id, bmi, bmi_category, bmr, tdee, score,
                 health_risk, fitness_level, json.dumps(health_plan),
-                json.dumps(alerts), weekly_goals,
+                json.dumps(alerts), json.dumps(weekly_goals),
                 (datetime.now() + timedelta(days=30)).date(),
                 predictions.get("confidence_score", 0.85),
-                json.dumps({}), json.dumps({})
+                json.dumps({}), json.dumps({}),
+                json.dumps(ml_prediction_result), json.dumps(xai_result)
             ))
             cursor.execute("SELECT LASTVAL()")
             analysis_id = cursor.fetchone()['lastval']
@@ -632,7 +634,25 @@ def get_analysis(analysis_id: int, user_id: int = Depends(verify_token)):
         if not analysis:
             raise HTTPException(status_code=404, detail="Análisis no encontrado")
         
-        return convert_to_json_serializable(dict(analysis))
+        analysis_dict = dict(analysis)
+        
+        # Si no tiene ml_prediction, obtenerla de health_predictions (compatibilidad)
+        if not analysis_dict.get("ml_prediction"):
+            cursor.execute("""
+                SELECT * FROM health_predictions
+                WHERE analysis_id = %s AND user_id = %s
+                LIMIT 1
+            """, (analysis_id, user_id))
+            prediction = cursor.fetchone()
+            if prediction:
+                prediction_dict = dict(prediction)
+                analysis_dict["ml_prediction"] = {
+                    "predicted_class": prediction_dict.get("predictions_data", {}).get("predicted_class"),
+                    "confidence": prediction_dict.get("confidence_score"),
+                    "model_used": prediction_dict.get("model_used")
+                }
+        
+        return convert_to_json_serializable(analysis_dict)
 
 # ============================================
 # ENDPOINTS DE PROGRESO DIARIO
@@ -1105,10 +1125,12 @@ def _get_report_data(user_id, include_history=False, history_limit=10, language=
     """Helper: obtiene datos del perfil, analisis, predicciones e historial."""
     with get_db_cursor(commit=False) as cursor:
         cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
-        profile = convert_to_json_serializable(dict(cursor.fetchone()))
+        profile_row = cursor.fetchone()
+        profile = convert_to_json_serializable(dict(profile_row)) if profile_row else None
 
         cursor.execute("SELECT * FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
-        analysis = convert_to_json_serializable(dict(cursor.fetchone()))
+        analysis_row = cursor.fetchone()
+        analysis = convert_to_json_serializable(dict(analysis_row)) if analysis_row else None
 
         cursor.execute("SELECT * FROM health_predictions WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
         pred_row = cursor.fetchone()
@@ -1121,7 +1143,8 @@ def _get_report_data(user_id, include_history=False, history_limit=10, language=
                 "FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT %s",
                 (user_id, history_limit),
             )
-            history = [convert_to_json_serializable(dict(row)) for row in cursor.fetchall()]
+            history_rows = cursor.fetchall()
+            history = [convert_to_json_serializable(dict(row)) for row in history_rows]
 
     from services.reports import ReportEngine
     engine = ReportEngine()
@@ -1144,7 +1167,7 @@ def get_health_report_pdf(user_id: int = Depends(verify_token), language: str = 
     pdf_buffer.seek(0)
 
     return StreamingResponse(
-        io.BytesIO(pdf_buffer.read()),
+        pdf_buffer,
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=reporte_salud.pdf"}
     )
@@ -1160,7 +1183,7 @@ def get_health_report_excel(user_id: int = Depends(verify_token), language: str 
     excel_buffer.seek(0)
 
     return StreamingResponse(
-        io.BytesIO(excel_buffer.read()),
+        excel_buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=reporte_salud.xlsx"}
     )
@@ -1176,7 +1199,7 @@ def get_health_report_word(user_id: int = Depends(verify_token), language: str =
     word_buffer.seek(0)
 
     return StreamingResponse(
-        io.BytesIO(word_buffer.read()),
+        word_buffer,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": "attachment; filename=reporte_salud.docx"}
     )
@@ -1196,7 +1219,7 @@ def get_predictions_report_pdf(user_id: int = Depends(verify_token), language: s
     pdf_buffer.seek(0)
 
     return StreamingResponse(
-        io.BytesIO(pdf_buffer.read()),
+        pdf_buffer,
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=reporte_predicciones.pdf"}
     )
@@ -1212,7 +1235,7 @@ def get_predictions_report_excel(user_id: int = Depends(verify_token), language:
     excel_buffer.seek(0)
 
     return StreamingResponse(
-        io.BytesIO(excel_buffer.read()),
+        excel_buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=reporte_predicciones.xlsx"}
     )
@@ -1228,7 +1251,7 @@ def get_predictions_report_word(user_id: int = Depends(verify_token), language: 
     word_buffer.seek(0)
 
     return StreamingResponse(
-        io.BytesIO(word_buffer.read()),
+        word_buffer,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": "attachment; filename=reporte_predicciones.docx"}
     )
@@ -1248,7 +1271,7 @@ def get_recipes_report_pdf(user_id: int = Depends(verify_token), language: str =
     pdf_buffer.seek(0)
 
     return StreamingResponse(
-        io.BytesIO(pdf_buffer.read()),
+        pdf_buffer,
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=reporte_recetas.pdf"}
     )
@@ -1264,7 +1287,7 @@ def get_recipes_report_excel(user_id: int = Depends(verify_token), language: str
     excel_buffer.seek(0)
 
     return StreamingResponse(
-        io.BytesIO(excel_buffer.read()),
+        excel_buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=reporte_recetas.xlsx"}
     )
@@ -1280,7 +1303,7 @@ def get_recipes_report_word(user_id: int = Depends(verify_token), language: str 
     word_buffer.seek(0)
 
     return StreamingResponse(
-        io.BytesIO(word_buffer.read()),
+        word_buffer,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": "attachment; filename=reporte_recetas.docx"}
     )
@@ -1300,7 +1323,7 @@ def get_exercise_report_pdf(user_id: int = Depends(verify_token), language: str 
     pdf_buffer.seek(0)
 
     return StreamingResponse(
-        io.BytesIO(pdf_buffer.read()),
+        pdf_buffer,
         media_type="application/pdf",
         headers={"Content-Disposition": "attachment; filename=reporte_ejercicio.pdf"}
     )
@@ -1316,7 +1339,7 @@ def get_exercise_report_excel(user_id: int = Depends(verify_token), language: st
     excel_buffer.seek(0)
 
     return StreamingResponse(
-        io.BytesIO(excel_buffer.read()),
+        excel_buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=reporte_ejercicio.xlsx"}
     )
@@ -1332,7 +1355,7 @@ def get_exercise_report_word(user_id: int = Depends(verify_token), language: str
     word_buffer.seek(0)
 
     return StreamingResponse(
-        io.BytesIO(word_buffer.read()),
+        word_buffer,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": "attachment; filename=reporte_ejercicio.docx"}
     )
@@ -1401,6 +1424,28 @@ def get_diary_summary(user_id: int = Depends(verify_token)):
         "today": today_data,
         "streak_days": streak,
         "weekly_avg_weight": avg_weight,
+    }
+
+
+# ============================================
+# ENDPOINTS DE JOURNEY (MODULO VIAJE)
+# ============================================
+
+@app.get("/api/journey/summary")
+def get_journey_summary(user_id: int = Depends(verify_token)):
+    """Resumen del estado del viaje (perfil y análisis completados)"""
+    with get_db_cursor(commit=False) as cursor:
+        # Verificar si tiene perfil
+        cursor.execute("SELECT id FROM health_profiles WHERE user_id = %s", (user_id,))
+        has_profile = bool(cursor.fetchone())
+
+        # Verificar si tiene análisis
+        cursor.execute("SELECT id FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1", (user_id,))
+        has_analysis = bool(cursor.fetchone())
+
+    return {
+        "has_profile": has_profile,
+        "has_analysis": has_analysis
     }
 
 

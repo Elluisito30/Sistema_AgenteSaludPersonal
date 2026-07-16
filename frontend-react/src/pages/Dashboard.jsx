@@ -479,10 +479,10 @@ function Dashboard() {
                       <div className="analysis-card bmi">
                         <div className="analysis-card-icon" title="Índice de Masa Corporal — relación entre tu peso y tu estatura">⚖️</div>
                         <div className="analysis-card-label">{t('analysis.bmi')}</div>
-                        <div className="analysis-card-value tooltip-trigger" title={`IMC: ${analysis.bmi} — Categoría: ${String(analysis.bmi_category || '').replace('_', ' ')}. Valores normales: 18.5 – 24.9`}>{analysis.bmi}</div>
+                        <div className="analysis-card-value tooltip-trigger" title={`IMC: ${analysis.bmi} — Categoría: ${t(`analysis.bmiCategory.${analysis.bmi_category}`) || String(analysis.bmi_category || '').replace('_', ' ')}. Valores normales: 18.5 – 24.9`}>{analysis.bmi}</div>
                         <div className="analysis-card-desc">{t('analysis.bmiDesc')}</div>
-                        <span className={`analysis-card-badge ${analysis.bmi_category === 'normal' ? '' : analysis.bmi_category === 'obese' ? 'danger' : 'warning'}`}>
-                          {String(analysis.bmi_category || '').replace('_', ' ')}
+                        <span className={`analysis-card-badge ${analysis.bmi_category === 'normal' ? '' : (analysis.bmi_category?.startsWith('obese') ? 'danger' : 'warning')}`}>
+                          {t(`analysis.bmiCategory.${analysis.bmi_category}`) || String(analysis.bmi_category || '').replace('_', ' ')}
                         </span>
                       </div>
 
@@ -491,7 +491,6 @@ function Dashboard() {
                         <div className="analysis-card-label">{t('analysis.dailyCalories')}</div>
                         <div className="analysis-card-value tooltip-trigger" title={`TDEE: ${Number(analysis.tdee || 0).toFixed(0)} kcal/día. Calculado según tu nivel de actividad, peso, altura y objetivo.`}>{Number(analysis.tdee || 0).toFixed(0)}</div>
                         <div className="analysis-card-desc">{t('analysis.caloriesDesc')}</div>
-                        <span className="analysis-card-badge info">TDEE</span>
                       </div>
                     </div>
 
@@ -517,9 +516,16 @@ function Dashboard() {
                         <p className="analysis-panel-subtitle">{t('analysis.weeklyGoalsDesc')}</p>
                         <div className="analysis-panel-content">
                           {analysis.weekly_goals && analysis.weekly_goals.length > 0 ? (
-                            analysis.weekly_goals.map((goal, i) => (
-                              <p key={i}>🎯 {goal}</p>
-                            ))
+                            analysis.weekly_goals.map((goal, i) => {
+                              // Handle both old string goals and new key/params goals
+                              let goalText;
+                              if (typeof goal === 'object' && goal?.key) {
+                                goalText = t(`weeklyGoals.${goal.key}`, goal.params || {});
+                              } else {
+                                goalText = goal;
+                              }
+                              return <p key={i}>🎯 {goalText}</p>;
+                            })
                           ) : (
                             <p>{t('analysis.noGoals')}</p>
                           )}
@@ -774,9 +780,15 @@ function Dashboard() {
                       <div className="summary-goals">
                         <strong>{t('reports.improvements')}:</strong>
                         <ul>
-                          {analysis.weekly_goals.slice(0, 3).map((goal, i) => (
-                            <li key={i}>{goal}</li>
-                          ))}
+                          {analysis.weekly_goals.slice(0, 3).map((goal, i) => {
+                            let goalText;
+                            if (typeof goal === 'object' && goal?.key) {
+                              goalText = t(`weeklyGoals.${goal.key}`, goal.params || {});
+                            } else {
+                              goalText = goal;
+                            }
+                            return <li key={i}>{goalText}</li>;
+                          })}
                         </ul>
                       </div>
                     )}

@@ -93,6 +93,23 @@
     "energyBoost": "⚡ Energy Boost",
     "generalWellness": "🌟 General Wellness"
   },
+  "weeklyGoals": {
+    "goal_underweight_1": "Gradually increase weight to {target_min}+ kg in a healthy way",
+    "goal_underweight_2": "Consult a nutritionist for a personalized eating plan",
+    "goal_underweight_3": "Weekly medical follow-up until weight stabilizes",
+    "goal_overweight_1": "Gradually reduce weight to {target_max} kg in a sustainable way",
+    "goal_overweight_2": "Consult a specialist to supervise the process",
+    "goal_normal_weight": "Maintain current weight with healthy habits",
+    "goal_weight_loss": "Follow the eating plan with controlled caloric deficit",
+    "goal_muscle_gain": "Resistance training 3-4 times a week",
+    "goal_better_sleep": "Establish sleep routine: 7-8 hours per night",
+    "goal_stress_reduction": "Practice relaxation techniques 10 min daily",
+    "goal_energy_boost": "Perform moderate exercise 30 min daily",
+    "goal_general_wellness": "Maintain adequate hydration (2+ liters/day)",
+    "goal_fallback_1": "Maintain a balanced diet",
+    "goal_fallback_2": "Exercise 3 times a week",
+    "goal_fallback_3": "Sleep at least 7 hours"
+  },
   "messages": {
     "profileSaved": "✅ Profile updated successfully",
     "analyzing": "Analyzing your health with AI...",
@@ -111,6 +128,14 @@
     "caloriesDesc": "kcal/day based on your goal",
     "caloriesTooltip": "Total Daily Energy Expenditure — calories your body needs per day",
     "tdee": "TDEE",
+    "bmiCategory": {
+      "severely_underweight": "Very under recommended weight",
+      "underweight": "Below recommended weight",
+      "normal": "Healthy weight",
+      "overweight": "Above recommended weight",
+      "obese_1": "Obesity grade 1",
+      "obese_2_3": "Obesity"
+    },
     "alerts": "🚨 Alerts",
     "alertsDesc": "Medical attention and urgent recommendations",
     "noAlerts": "✅ You have no critical medical alerts at this time.",

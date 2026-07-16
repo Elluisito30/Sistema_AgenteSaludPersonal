@@ -119,6 +119,22 @@ TRANSLATIONS = {
         "risk_low": "Bueno",
         "risk_optimal": "Optimo",
         "risk_unknown": "Sin Datos",
+        # Weekly Goals
+        "goal_underweight_1": "Aumentar peso progresivamente hasta {target_min}+ kg de forma saludable",
+        "goal_underweight_2": "Consulta con nutricionista para plan de alimentación personalizado",
+        "goal_underweight_3": "Seguimiento médico semanal hasta estabilizar peso",
+        "goal_overweight_1": "Reducir peso progresivamente hasta {target_max} kg de forma sostenible",
+        "goal_overweight_2": "Consulta con especialista para supervisión del proceso",
+        "goal_normal_weight": "Mantener peso actual con hábitos saludables",
+        "goal_weight_loss": "Seguir plan alimenticio con déficit calórico controlado",
+        "goal_muscle_gain": "Entrenamiento de resistencia 3-4 veces por semana",
+        "goal_better_sleep": "Establecer rutina de sueño: 7-8 horas por noche",
+        "goal_stress_reduction": "Practicar técnicas de relajación 10 min al día",
+        "goal_energy_boost": "Realizar ejercicio moderado 30 min diarios",
+        "goal_general_wellness": "Mantener hidratación adecuada (2+ litros/día)",
+        "goal_fallback_1": "Mantener una dieta balanceada",
+        "goal_fallback_2": "Ejercicio 3 veces por semana",
+        "goal_fallback_3": "Dormir al menos 7 horas",
     },
     "en": {
         "app_name": "HEALTH AI",
@@ -229,6 +245,22 @@ TRANSLATIONS = {
         "risk_low": "Good",
         "risk_optimal": "Optimal",
         "risk_unknown": "No Data",
+        # Weekly Goals
+        "goal_underweight_1": "Gradually increase weight to {target_min}+ kg in a healthy way",
+        "goal_underweight_2": "Consult a nutritionist for a personalized eating plan",
+        "goal_underweight_3": "Weekly medical follow-up until weight stabilizes",
+        "goal_overweight_1": "Gradually reduce weight to {target_max} kg in a sustainable way",
+        "goal_overweight_2": "Consult a specialist to supervise the process",
+        "goal_normal_weight": "Maintain current weight with healthy habits",
+        "goal_weight_loss": "Follow the eating plan with controlled caloric deficit",
+        "goal_muscle_gain": "Resistance training 3-4 times a week",
+        "goal_better_sleep": "Establish sleep routine: 7-8 hours per night",
+        "goal_stress_reduction": "Practice relaxation techniques 10 min daily",
+        "goal_energy_boost": "Perform moderate exercise 30 min daily",
+        "goal_general_wellness": "Maintain adequate hydration (2+ liters/day)",
+        "goal_fallback_1": "Maintain a balanced diet",
+        "goal_fallback_2": "Exercise 3 times a week",
+        "goal_fallback_3": "Sleep at least 7 hours",
     },
 }
 
@@ -351,12 +383,12 @@ COLORS = {
 # ==========================================
 
 BMI_CATEGORY_LABELS = {
-    "severely_underweight": {"es": "Desnutricion severa", "en": "Severely underweight"},
-    "underweight": {"es": "Bajo peso", "en": "Underweight"},
-    "normal": {"es": "Peso normal", "en": "Normal weight"},
-    "overweight": {"es": "Sobrepeso", "en": "Overweight"},
-    "obese_1": {"es": "Obesidad grado I", "en": "Obesity class I"},
-    "obese_2_3": {"es": "Obesidad grado II/III", "en": "Obesity class II/III"},
+    "severely_underweight": {"es": "Peso muy por debajo del recomendado", "en": "Very under recommended weight"},
+    "underweight": {"es": "Peso por debajo del recomendado", "en": "Below recommended weight"},
+    "normal": {"es": "Peso saludable", "en": "Healthy weight"},
+    "overweight": {"es": "Peso ligeramente elevado", "en": "Above recommended weight"},
+    "obese_1": {"es": "Obesidad grado I", "en": "Obesity grade I"},
+    "obese_2_3": {"es": "Obesidad", "en": "Obesity"},
 }
 
 BMI_CATEGORY_COLORS = {

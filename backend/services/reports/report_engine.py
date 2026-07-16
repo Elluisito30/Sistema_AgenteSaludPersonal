@@ -203,7 +203,7 @@ class ReportEngine:
             "ml_prediction": self._build_ml_section(ar.get("ml_prediction")),
             "xai": self._build_xai_section(ar.get("xai")),
             "alerts": self._build_alerts_section(ar.get("alerts")),
-            "goals": self._build_goals_section(ar.get("weekly_goals")),
+            "goals": self._build_goals_section(ar.get("weekly_goals"), lang),
             "nutrition": self._build_nutrition_section(health_plan),
             "exercise": self._build_exercise_section(health_plan),
             "predictions": self._build_predictions_section(
@@ -254,7 +254,7 @@ class ReportEngine:
             "ml_prediction": self._build_ml_section(ml_from_db),
             "xai": self._build_xai_section(None),
             "alerts": self._build_alerts_section(analysis.get("alerts")),
-            "goals": self._build_goals_section(analysis.get("weekly_goals")),
+            "goals": self._build_goals_section(analysis.get("weekly_goals"), lang),
             "nutrition": self._build_nutrition_section(health_plan),
             "exercise": self._build_exercise_section(health_plan),
             "predictions": self._build_predictions_section(
@@ -399,11 +399,26 @@ class ReportEngine:
             "high_count": len(high),
         }
 
-    def _build_goals_section(self, weekly_goals):
+    def _build_goals_section(self, weekly_goals, language="es"):
         goals = weekly_goals or []
+        translated_goals = []
+        t = get_translations(language)
+        for goal in goals:
+            if isinstance(goal, dict) and "key" in goal:
+                template = t.get(goal["key"], goal["key"])
+                params = goal.get("params", {})
+                try:
+                    translated = template.format(**params)
+                except (KeyError, IndexError):
+                    translated = template
+                translated_goals.append(translated)
+            elif isinstance(goal, str):
+                translated_goals.append(goal)
+            else:
+                translated_goals.append(str(goal))
         return {
-            "all": goals,
-            "count": len(goals),
+            "all": translated_goals,
+            "count": len(translated_goals),
         }
 
     def _build_nutrition_section(self, health_plan):

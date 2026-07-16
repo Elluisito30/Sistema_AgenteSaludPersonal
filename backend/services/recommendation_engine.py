@@ -325,43 +325,39 @@ class RecommendationEngine:
         bmi_info = get_bmi_info(bmi_category)
         if bmi_category in ["severely_underweight", "underweight"]:
             target_min = round(metrics["weight_kg"] + 2, 1)
-            weekly.append(
-                f"Aumentar peso progresivamente hacia {target_min}+ kg de forma saludable"
-            )
-            weekly.append("Consulta con nutricionista para plan de alimentación personalizado")
+            weekly.append({"key": "goal_underweight_1", "params": {"target_min": target_min}})
+            weekly.append({"key": "goal_underweight_2"})
             if bmi_category == "severely_underweight":
-                weekly.append("Seguimiento médico semanal hasta estabilizar peso")
+                weekly.append({"key": "goal_underweight_3"})
 
         elif bmi_category in ["overweight", "obese_1", "obese_2_3"]:
             target_max = round(metrics["weight_kg"] - 2, 1)
-            weekly.append(
-                f"Reducir peso progresivamente hacia {target_max} kg de forma sostenible"
-            )
+            weekly.append({"key": "goal_overweight_1", "params": {"target_max": target_max}})
             if bmi_category in ["obese_1", "obese_2_3"]:
-                weekly.append("Consulta con especialista para supervisión del proceso")
+                weekly.append({"key": "goal_overweight_2"})
 
         elif bmi_category == "normal":
-            weekly.append("Mantener peso actual con hábitos saludables")
+            weekly.append({"key": "goal_normal_weight"})
 
         # Objetivos derivados de goals del usuario
-        goal_descriptions = {
-            "weight_loss": "Seguir plan alimentario con déficit calórico controlado",
-            "muscle_gain": "Entrenamiento de resistance 3-4 veces por semana",
-            "better_sleep": "Establecer rutina de sueño: 7-8 horas por noche",
-            "stress_reduction": "Practicar técnicas de relajación 10 min al día",
-            "energy_boost": "Realizar ejercicio moderado 30 min diarios",
-            "general_wellness": "Mantener hidratación adecuada (2+ litros/día)",
+        goal_key_map = {
+            "weight_loss": "goal_weight_loss",
+            "muscle_gain": "goal_muscle_gain",
+            "better_sleep": "goal_better_sleep",
+            "stress_reduction": "goal_stress_reduction",
+            "energy_boost": "goal_energy_boost",
+            "general_wellness": "goal_general_wellness",
         }
         for goal in goals:
-            desc = goal_descriptions.get(goal)
-            if desc:
-                weekly.append(desc)
+            key = goal_key_map.get(goal)
+            if key:
+                weekly.append({"key": key})
 
         if not weekly:
             weekly = [
-                "Mantener una dieta balanceada",
-                "Ejercicio 3 veces por semana",
-                "Dormir al menos 7 horas",
+                {"key": "goal_fallback_1"},
+                {"key": "goal_fallback_2"},
+                {"key": "goal_fallback_3"},
             ]
 
         return weekly

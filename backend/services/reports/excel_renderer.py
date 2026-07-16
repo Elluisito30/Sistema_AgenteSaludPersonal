@@ -208,7 +208,7 @@ def generate_predictions_excel(report_data, language="es"):
     ws3 = wb.add_worksheet(t["narratives"])
     ws3.set_column("A:B", 40)
     ws3.write(0, 0, t["section"], hf)
-    ws3.write(0, 1, t["text"], hf
+    ws3.write(0, 1, t["text"], hf)
     row = 1
     for nk in ["ml_interpretation", "prognosis"]:
         nav = narratives.get(nk)

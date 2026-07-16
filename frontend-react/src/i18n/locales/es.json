@@ -93,6 +93,23 @@
     "energyBoost": "⚡ Más energía",
     "generalWellness": "🌟 Bienestar general"
   },
+  "weeklyGoals": {
+    "goal_underweight_1": "Aumentar peso progresivamente hasta {target_min}+ kg de forma saludable",
+    "goal_underweight_2": "Consulta con nutricionista para plan de alimentación personalizado",
+    "goal_underweight_3": "Seguimiento médico semanal hasta estabilizar peso",
+    "goal_overweight_1": "Reducir peso progresivamente hasta {target_max} kg de forma sostenible",
+    "goal_overweight_2": "Consulta con especialista para supervisión del proceso",
+    "goal_normal_weight": "Mantener peso actual con hábitos saludables",
+    "goal_weight_loss": "Seguir plan alimenticio con déficit calórico controlado",
+    "goal_muscle_gain": "Entrenamiento de resistencia 3-4 veces por semana",
+    "goal_better_sleep": "Establecer rutina de sueño: 7-8 horas por noche",
+    "goal_stress_reduction": "Practicar técnicas de relajación 10 min al día",
+    "goal_energy_boost": "Realizar ejercicio moderado 30 min diarios",
+    "goal_general_wellness": "Mantener hidratación adecuada (2+ litros/día)",
+    "goal_fallback_1": "Mantener una dieta balanceada",
+    "goal_fallback_2": "Ejercicio 3 veces por semana",
+    "goal_fallback_3": "Dormir al menos 7 horas"
+  },
   "messages": {
     "profileSaved": "✅ Perfil actualizado correctamente",
     "analyzing": "Analizando tu salud con IA...",
@@ -111,6 +128,14 @@
     "caloriesDesc": "kcal/día según tu objetivo",
     "caloriesTooltip": "Total de Energía Diaria Expendida — calorías que tu cuerpo necesita al día",
     "tdee": "TDEE",
+    "bmiCategory": {
+      "severely_underweight": "Peso muy por debajo del recomendado",
+      "underweight": "Peso por debajo del recomendado",
+      "normal": "Peso saludable",
+      "overweight": "Peso ligeramente elevado",
+      "obese_1": "Obesidad grado 1",
+      "obese_2_3": "Obesidad"
+    },
     "alerts": "🚨 Alertas",
     "alertsDesc": "Atención médica y recomendaciones urgentes",
     "noAlerts": "✅ No tienes alertas médicas críticas en este momento.",
