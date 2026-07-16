@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
@@ -44,50 +44,44 @@ class ChatService:
     def _build_system_prompt(self, language: str = "es") -> str:
         if language == "en":
             return (
-                "You are Health AI Assistant, a professional health education chatbot.\n\n"
-                "ROLE:\n"
-                "- Provide clear, educational explanations about the user's health data.\n"
-                "- Help the user understand their health score, BMI, alerts, predictions, and AI explanations.\n"
-                "- Offer general wellness guidance based on the data provided.\n\n"
-                "SAFETY RULES (NON-NEGOTIABLE):\n"
-                "- NEVER diagnose diseases or medical conditions.\n"
-                "- NEVER replace a medical professional's judgment.\n"
-                "- NEVER prescribe medications or treatments.\n"
-                "- NEVER issue emergency medical advice.\n"
-                "- ALWAYS recommend consulting a healthcare professional for specific concerns.\n"
-                "- ALWAYS include a disclaimer when giving health-related information.\n\n"
-                "RESPONSE FORMAT:\n"
-                "- Be professional, educational, and easy to understand.\n"
-                "- Use plain language, avoid unnecessary jargon.\n"
-                "- Keep responses concise (2-4 paragraphs max).\n"
-                "- If you don't have enough data, say so honestly.\n\n"
-                "DISCLAIMER:\n"
-                "Append at the end of every response:\n"
-                "\"This information is educational only and does not replace medical advice. "
-                "Consult a healthcare professional for personalized guidance.\""
+                "You are Health AI — a warm, conversational health assistant. Think ChatGPT, not a medical dashboard.\n\n"
+                "HOW YOU WORK:\n"
+                "- You have access to the last 15 messages. Use them to maintain full conversational context.\n"
+                "- If the user says \"that\", \"the other thing\", \"my brother\", \"if I exercise\" — resolve the reference from conversation history.\n"
+                "- NEVER re-explain the user's score, BMI, or alerts unless they ask again. They know their numbers.\n"
+                "- Answer ONLY what is asked. If they ask about food, talk about food — not exercise, not sleep.\n"
+                "- Keep responses to 1-3 short paragraphs. Prefer brevity.\n"
+                "- Use natural, everyday language. No jargon unless the user uses it first.\n"
+                "- Never say \"According to your clinical data...\" or \"Based on your health profile...\" — just answer naturally.\n"
+                "- If greeted, respond warmly and briefly. Do NOT analyze health data.\n"
+                "- You have the patient's health data below. Use it ONLY when directly relevant.\n"
+                "- Give practical, actionable advice: \"try adding a handful of nuts as a snack\" not \"eat better\".\n"
+                "- If the question is vague, ask for clarification instead of guessing.\n"
+                "- Tailor responses to the user's specific data when relevant.\n\n"
+                "SAFETY (NON-NEGOTIABLE):\n"
+                "- NEVER diagnose conditions or prescribe medications.\n"
+                "- NEVER give emergency advice — tell them to seek immediate medical help.\n"
+                "- When relevant, briefly note your info is educational, not a substitute for professional medical advice."
             )
         return (
-            "Eres el Asistente de Salud Health AI, un chatbot educativo profesional.\n\n"
-            "ROL:\n"
-            "- Proporciona explicaciones claras y educativas sobre los datos de salud del usuario.\n"
-            "- Ayuda al usuario a entender su puntuación de salud, IMC, alertas, predicciones y explicaciones de IA.\n"
-            "- Ofrece orientación general de bienestar basada en los datos proporcionados.\n\n"
-            "REGLAS DE SEGURIDAD (INNEGOCIABLES):\n"
-            "- NUNCA diagnostiques enfermedades o condiciones médicas.\n"
-            "- NUNCA reemplaces el juicio de un profesional médico.\n"
-            "- NUNCA recetes medicamentos ni tratamientos.\n"
-            "- NUNCA emitas consejos de emergencia médica.\n"
-            "- SIEMPRE recomienda consultar a un profesional de la salud para preocupaciones específicas.\n"
-            "- SIEMPRE incluye un descrito al dar información relacionada con la salud.\n\n"
-            "FORMATO DE RESPUESTA:\n"
-            "- Sé profesional, educativo y fácil de entender.\n"
-            "- Usa lenguaje claro, evita jerga innecesaria.\n"
-            "- Respuestas concisas (máximo 2-4 párrafos).\n"
-            "- Si no tienes suficientes datos, dilo honestamente.\n\n"
-            "DESCRITO LEGAL:\n"
-            "Al final de cada respuesta agrega:\n"
-            "\"Esta información es solo educativa y no reemplaza el consejo médico. "
-            "Consulta a un profesional de la salud para orientación personalizada.\""
+            "Eres Health AI — un asistente de salud conversacional y cálido. Piensa en ChatGPT, no en un panel médico.\n\n"
+            "CÓMO FUNCIONAS:\n"
+            "- Tienes acceso a los últimos 15 mensajes. Úsalos para mantener el contexto conversacional completo.\n"
+            "- Si el usuario dice \"eso\", \"lo otro\", \"mi hermano\", \"si hago ejercicio\" — resuelve la referencia del historial.\n"
+            "- NUNCA vuelvas a explicar la puntuación, el IMC o las alertas a menos que lo pregunten de nuevo. Ya lo saben.\n"
+            "- Responde SOLO lo que preguntan. Si pregunta sobre comida, habla de comida — no de ejercicio ni sueño.\n"
+            "- Respuestas de 1-3 párrafos cortos. Prefiere la brevedad.\n"
+            "- Lenguaje natural y cotidiano. Sin jerga médica a menos que el usuario la use primero.\n"
+            "- Nunca digas \"De acuerdo con tus datos clínicos...\" o \"Basándome en tu perfil...\" — simplemente responde.\n"
+            "- Si te saludan, responde cálidamente y breve. NO analices datos de salud.\n"
+            "- Tienes los datos del paciente más abajo. Úsalos SOLO cuando sean directamente relevantes.\n"
+            "- Da consejos prácticos y accionables: \"intenta agregar un puñado de nueces como snack\" no \"come mejor\".\n"
+            "- Si la pregunta es vaga, pide clarificación en vez de adivinar.\n"
+            "- Adapta las respuestas a los datos específicos del usuario cuando sea relevante.\n\n"
+            "SEGURIDAD (INNEGOCIABLE):\n"
+            "- NUNCA diagnostiques enfermedades ni recetes medicamentos.\n"
+            "- NUNCA des consejos de emergencia — indica que busque atención médica inmediata.\n"
+            "- Cuando sea relevante, menciona brevemente que tu información es educativa y no sustituye el consejo médico profesional."
         )
 
     def _build_user_context(
@@ -96,31 +90,26 @@ class ChatService:
         analysis: Optional[Dict] = None,
         prediction: Optional[Dict] = None,
         xai: Optional[Dict] = None,
-        language: str = "es"
+        language: str = "es",
+        diary: Optional[Dict] = None,
     ) -> str:
         sections = []
 
         if language == "en":
-            sections.append("PATIENT HEALTH DATA:")
+            sections.append("PATIENT HEALTH DATA (use only when directly relevant — do NOT repeat in every response):")
         else:
-            sections.append("DATOS DE SALUD DEL PACIENTE:")
+            sections.append("DATOS DE SALUD DEL PACIENTE (usa solo cuando sea relevante — NO repitas en cada respuesta):")
 
         if analysis:
             score = analysis.get("health_score", "N/A")
             bmi = analysis.get("bmi", "N/A")
             bmi_cat = analysis.get("bmi_category", "N/A")
-            tdee = analysis.get("tdee", "N/A")
             alerts = analysis.get("alerts", [])
-            goals = analysis.get("weekly_goals", [])
 
             if language == "en":
-                sections.append(f"Health Score: {score}/100")
-                sections.append(f"BMI: {bmi} ({bmi_cat})")
-                sections.append(f"TDEE: {tdee} kcal/day")
+                sections.append(f"Score: {score}/100 | BMI: {bmi} ({bmi_cat})")
             else:
-                sections.append(f"Puntuación de Salud: {score}/100")
-                sections.append(f"IMC: {bmi} ({bmi_cat})")
-                sections.append(f"TDEE: {tdee} kcal/día")
+                sections.append(f"Score: {score}/100 | IMC: {bmi} ({bmi_cat})")
 
             if alerts:
                 alert_texts = [a.get("message", str(a)) if isinstance(a, dict) else str(a) for a in alerts]
@@ -129,82 +118,86 @@ class ChatService:
                 else:
                     sections.append(f"Alertas: {'; '.join(alert_texts)}")
 
+            goals = analysis.get("weekly_goals", [])
             if goals:
                 if language == "en":
-                    sections.append(f"Weekly Goals: {'; '.join(goals[:5])}")
+                    sections.append(f"Goals: {'; '.join(goals[:5])}")
                 else:
-                    sections.append(f"Objetivos Semanales: {'; '.join(goals[:5])}")
+                    sections.append(f"Objetivos: {'; '.join(goals[:5])}")
 
             nutrition = (analysis.get("health_plan") or {}).get("nutrition") or {}
             if nutrition:
                 cal = nutrition.get("daily_calories", "N/A")
                 macro = nutrition.get("macronutrients") or {}
                 if language == "en":
-                    sections.append(f"Daily Calories: {cal} kcal | Protein: {macro.get('protein','?')}g | Carbs: {macro.get('carbs','?')}g | Fats: {macro.get('fats','?')}g")
+                    sections.append(f"Nutrition: {cal} kcal/day | P: {macro.get('protein','?')}g | C: {macro.get('carbs','?')}g | F: {macro.get('fats','?')}g")
                 else:
-                    sections.append(f"Calorías Diarias: {cal} kcal | Proteína: {macro.get('protein','?')}g | Carbohidratos: {macro.get('carbs','?')}g | Grasas: {macro.get('fats','?')}g")
+                    sections.append(f"Nutrición: {cal} kcal/día | P: {macro.get('protein','?')}g | C: {macro.get('carbs','?')}g | G: {macro.get('fats','?')}g")
+
+            exercise = (analysis.get("health_plan") or {}).get("exercise") or {}
+            if exercise:
+                cardio = exercise.get("cardio", "")
+                strength = exercise.get("strength", "")
+                if language == "en":
+                    sections.append(f"Exercise: Cardio: {cardio} | Strength: {strength}")
+                else:
+                    sections.append(f"Ejercicio: Cardio: {cardio} | Fuerza: {strength}")
 
         if prediction:
             pred_class = prediction.get("predicted_class") or prediction.get("predictedCategory", "N/A")
             confidence = prediction.get("confidence", "N/A")
-            model = prediction.get("model_used", "N/A")
             if language == "en":
-                sections.append(f"\nML Prediction: {pred_class} (Confidence: {confidence}%, Model: {model})")
+                sections.append(f"ML Prediction: {pred_class} (Confidence: {confidence}%)")
             else:
-                sections.append(f"\nPredicción ML: {pred_class} (Confianza: {confidence}%, Modelo: {model})")
+                sections.append(f"Predicción ML: {pred_class} (Confianza: {confidence}%)")
 
         if xai:
-            summary = xai.get("summary", "")
             main_reason = xai.get("main_reason", "")
-            confidence_text = xai.get("confidence_text", "")
             risk = xai.get("risk_explanation", "")
-            features = xai.get("important_features", [])
-
-            if summary or main_reason:
+            recommendations = xai.get("recommendations", [])
+            if main_reason or risk:
                 if language == "en":
-                    sections.append(f"\nAI Explanation:")
-                    if summary:
-                        sections.append(f"  Summary: {summary}")
+                    parts = []
                     if main_reason:
-                        sections.append(f"  Main Reason: {main_reason}")
-                    if confidence_text:
-                        sections.append(f"  Confidence: {confidence_text}")
+                        parts.append(f"Main reason: {main_reason}")
                     if risk:
-                        sections.append(f"  Risk: {risk}")
+                        parts.append(f"Risk: {risk}")
+                    sections.append(" | ".join(parts))
                 else:
-                    sections.append(f"\nExplicación de IA:")
-                    if summary:
-                        sections.append(f"  Resumen: {summary}")
+                    parts = []
                     if main_reason:
-                        sections.append(f"  Razón Principal: {main_reason}")
-                    if confidence_text:
-                        sections.append(f"  Confianza: {confidence_text}")
+                        parts.append(f"Razón principal: {main_reason}")
                     if risk:
-                        sections.append(f"  Riesgo: {risk}")
+                        parts.append(f"Riesgo: {risk}")
+                    sections.append(" | ".join(parts))
+            if recommendations:
+                if language == "en":
+                    sections.append(f"Recommendations: {'; '.join(recommendations[:5])}")
+                else:
+                    sections.append(f"Recomendaciones: {'; '.join(recommendations[:5])}")
 
-            if features:
-                feat_list = [f.get("display_name", f.get("name", "?")) for f in features[:5]]
+        if diary:
+            today = diary.get("today") or {}
+            streak = diary.get("streak_days", 0)
+            parts = []
+            if today.get("water_liters"):
+                parts.append(f"Agua hoy: {today['water_liters']}L")
+            if today.get("calories_consumed"):
+                parts.append(f"Calorías hoy: {today['calories_consumed']}kcal")
+            if today.get("exercise_minutes"):
+                parts.append(f"Ejercicio hoy: {today['exercise_minutes']}min")
+            if today.get("sleep_hours"):
+                parts.append(f"Sueño hoy: {today['sleep_hours']}h")
+            if today.get("mood"):
+                mood_labels = {1: 'Muy mal', 2: 'Mal', 3: 'Regular', 4: 'Bien', 5: 'Excelente'}
+                parts.append(f"Estado de ánimo: {mood_labels.get(today['mood'], 'N/A')}")
+            if today.get("weight_kg"):
+                parts.append(f"Peso registrado: {today['weight_kg']}kg")
+            if parts:
                 if language == "en":
-                    sections.append(f"  Key Factors: {', '.join(feat_list)}")
+                    sections.append(f"Today's diary: {' | '.join(parts)} | Streak: {streak} days")
                 else:
-                    sections.append(f"  Factores Clave: {', '.join(feat_list)}")
-
-            scenario_follow = xai.get("scenario_follow")
-            scenario_ignore = xai.get("scenario_ignore")
-            if scenario_follow:
-                pw = scenario_follow.get("projected_weight_kg", "?")
-                cat = scenario_follow.get("projected_category", "?")
-                if language == "en":
-                    sections.append(f"  Follow Plan: → {pw}kg, category: {cat}")
-                else:
-                    sections.append(f"  Seguir Plan: → {pw}kg, categoría: {cat}")
-            if scenario_ignore:
-                pw = scenario_ignore.get("projected_weight_kg", "?")
-                cat = scenario_ignore.get("projected_category", "?")
-                if language == "en":
-                    sections.append(f"  Ignore Plan: → {pw}kg, category: {cat}")
-                else:
-                    sections.append(f"  Ignorar Plan: → {pw}kg, categoría: {cat}")
+                    sections.append(f"Diario de hoy: {' | '.join(parts)} | Racha: {streak} días")
 
         sections.append("")
         if language == "en":
@@ -221,6 +214,8 @@ class ChatService:
         analysis: Optional[Dict] = None,
         prediction: Optional[Dict] = None,
         xai: Optional[Dict] = None,
+        history: Optional[List[Dict[str, str]]] = None,
+        diary: Optional[Dict] = None,
     ) -> Dict[str, Any]:
         if not self.is_available:
             return {
@@ -234,17 +229,25 @@ class ChatService:
             }
 
         system_prompt = self._build_system_prompt(language)
-        user_context = self._build_user_context(message, analysis, prediction, xai, language)
+        user_context = self._build_user_context(message, analysis, prediction, xai, language, diary)
+
+        messages = [{"role": "system", "content": system_prompt}]
+
+        if history:
+            for msg in history[-15:]:
+                role = "user" if msg.get("role") == "user" else "assistant"
+                content = msg.get("content", "")
+                if content.strip():
+                    messages.append({"role": role, "content": content})
+
+        messages.append({"role": "user", "content": user_context})
 
         try:
             chat_completion = self._client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_context}
-                ],
-                temperature=0.3,
-                max_tokens=1024,
+                messages=messages,
+                temperature=0.5,
+                max_tokens=512,
                 top_p=0.9,
             )
 

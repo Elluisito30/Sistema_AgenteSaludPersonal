@@ -183,12 +183,18 @@ class DailyProgress(BaseModel):
     energy_level: Optional[int] = None
     notes: Optional[str] = None
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
 class ChatRequest(BaseModel):
     message: str
     language: str = "es"
     analysis: Optional[Dict] = None
     prediction: Optional[Dict] = None
     xai: Optional[Dict] = None
+    history: Optional[list] = None
+    diary: Optional[Dict] = None
 
 # ============================================
 # UTILIDADES
@@ -1347,9 +1353,223 @@ def chat_with_ai(req: ChatRequest):
         analysis=req.analysis,
         prediction=req.prediction,
         xai=req.xai,
+        history=req.history,
+        diary=req.diary,
     )
 
     return result
+
+# ============================================
+# ENDPOINTS DE DIARIO — Resumen y Rachas
+# ============================================
+
+@app.get("/api/diary/summary")
+def get_diary_summary(user_id: int = Depends(verify_token)):
+    """Resumen del dia actual: totales de agua, calorias, pasos, etc."""
+    today = datetime.now().date()
+    with get_db_cursor(commit=False) as cursor:
+        cursor.execute("""
+            SELECT * FROM daily_progress WHERE user_id = %s AND date = %s
+        """, (user_id, today))
+        today_row = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT COUNT(DISTINCT date) as streak
+            FROM daily_progress
+            WHERE user_id = %s AND date >= %s::date - INTERVAL '30 days'
+            AND (weight_kg IS NOT NULL OR calories_consumed IS NOT NULL
+                 OR water_liters IS NOT NULL OR exercise_minutes IS NOT NULL)
+        """, (user_id, today))
+        streak_row = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT AVG(weight_kg) as avg_weight
+            FROM daily_progress
+            WHERE user_id = %s AND weight_kg IS NOT NULL
+            AND date >= %s::date - INTERVAL '7 days'
+        """, (user_id, today))
+        weight_row = cursor.fetchone()
+
+    today_data = dict(today_row) if today_row else None
+    streak = streak_row['streak'] if streak_row else 0
+    avg_weight = float(weight_row['avg_weight']) if weight_row and weight_row['avg_weight'] else None
+
+    return {
+        "date": today.isoformat(),
+        "today": today_data,
+        "streak_days": streak,
+        "weekly_avg_weight": avg_weight,
+    }
+
+
+@app.get("/api/diary/history")
+def get_diary_history(days: int = 30, user_id: int = Depends(verify_token)):
+    """Historial del diario para timeline."""
+    with get_db_cursor(commit=False) as cursor:
+        date_limit = (datetime.now() - timedelta(days=days)).date()
+        cursor.execute("""
+            SELECT date, weight_kg, steps_count, exercise_minutes,
+                   calories_consumed, water_liters, sleep_hours, mood,
+                   energy_level, stress_level
+            FROM daily_progress
+            WHERE user_id = %s AND date >= %s
+            ORDER BY date DESC
+        """, (user_id, date_limit))
+        return [dict(row) for row in cursor.fetchall()]
+
+
+# ============================================
+# ENDPOINTS DE FOOD AI
+# ============================================
+
+@app.post("/api/food/analyze")
+def analyze_food(
+    food_name: Optional[str] = None,
+    portion_grams: float = 200.0,
+    meal_type: str = "other",
+    user_id: int = Depends(verify_token),
+):
+    """Analizar comida con IA (estimacion simulada por ahora)."""
+    from services.food import food_analysis_service
+
+    result = food_analysis_service.analyze_meal(
+        food_name=food_name,
+        portion_grams=portion_grams,
+        meal_type=meal_type,
+    )
+    return result
+
+
+@app.post("/api/food/log")
+def log_food(
+    food_name: str,
+    meal_type: str,
+    calories: float = 0,
+    protein_g: float = 0,
+    carbs_g: float = 0,
+    fats_g: float = 0,
+    portion_grams: float = 200,
+    date: Optional[str] = None,
+    user_id: int = Depends(verify_token),
+):
+    """Registrar comida en el progreso diario del dia."""
+    log_date = date or datetime.now().date().isoformat()
+    with get_db_cursor() as cursor:
+        cursor.execute("""
+            SELECT id, calories_consumed, protein_g, carbs_g, fats_g
+            FROM daily_progress WHERE user_id = %s AND date = %s
+        """, (user_id, log_date))
+        existing = cursor.fetchone()
+
+        if existing:
+            new_cal = (existing['calories_consumed'] or 0) + calories
+            new_prot = (existing['protein_g'] or 0) + protein_g
+            new_carbs = (existing['carbs_g'] or 0) + carbs_g
+            new_fats = (existing['fats_g'] or 0) + fats_g
+            cursor.execute("""
+                UPDATE daily_progress SET
+                    calories_consumed = %s, protein_g = %s,
+                    carbs_g = %s, fats_g = %s
+                WHERE id = %s
+            """, (new_cal, new_prot, new_carbs, new_fats, existing['id']))
+        else:
+            cursor.execute("""
+                INSERT INTO daily_progress
+                (user_id, date, calories_consumed, protein_g, carbs_g, fats_g)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (user_id, log_date, calories, protein_g, carbs_g, fats_g))
+
+    return {"message": "Comida registrada exitosamente", "date": log_date}
+
+
+# ============================================
+# ENDPOINTS DE ONBOARDING
+# ============================================
+
+@app.get("/api/onboarding/status")
+def get_onboarding_status(user_id: int = Depends(verify_token)):
+    """Verificar si el usuario ha completado el onboarding (tiene perfil)."""
+    with get_db_cursor(commit=False) as cursor:
+        cursor.execute(
+            "SELECT id, age, gender FROM health_profiles WHERE user_id = %s",
+            (user_id,),
+        )
+        profile = cursor.fetchone()
+
+    return {
+        "completed": profile is not None,
+        "has_profile": profile is not None,
+    }
+
+
+# ============================================
+# ENDPOINTS DE JOURNEY (resumen diario)
+# ============================================
+
+@app.get("/api/journey/summary")
+def get_journey_summary(user_id: int = Depends(verify_token)):
+    """Resumen inteligente para la pantalla de Health Journey."""
+    today = datetime.now().date()
+    with get_db_cursor(commit=False) as cursor:
+        cursor.execute("SELECT * FROM health_profiles WHERE user_id = %s", (user_id,))
+        profile = cursor.fetchone()
+        if not profile:
+            return {"has_profile": False}
+
+        cursor.execute("""
+            SELECT health_score, bmi, alerts, weekly_goals, ml_prediction
+            FROM health_analyses WHERE user_id = %s ORDER BY id DESC LIMIT 1
+        """, (user_id,))
+        analysis = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT * FROM daily_progress
+            WHERE user_id = %s AND date = %s
+        """, (user_id, today))
+        today_progress = cursor.fetchone()
+
+        cursor.execute("""
+            SELECT COUNT(DISTINCT date) as streak
+            FROM daily_progress
+            WHERE user_id = %s AND date >= %s::date - INTERVAL '30 days'
+            AND (weight_kg IS NOT NULL OR calories_consumed IS NOT NULL
+                 OR water_liters IS NOT NULL OR exercise_minutes IS NOT NULL)
+        """, (user_id, today))
+        streak = cursor.fetchone()
+
+    result = {
+        "has_profile": True,
+        "user_name": None,
+        "health_score": None,
+        "bmi": None,
+        "alerts_count": 0,
+        "today_progress": dict(today_progress) if today_progress else None,
+        "streak_days": streak['streak'] if streak else 0,
+        "goals_count": 0,
+        "has_analysis": analysis is not None,
+    }
+
+    if analysis:
+        a = dict(analysis)
+        result["health_score"] = a.get("health_score")
+        result["bmi"] = a.get("bmi")
+        alerts = a.get("alerts") or []
+        if isinstance(alerts, str):
+            try:
+                alerts = json.loads(alerts)
+            except Exception:
+                alerts = []
+        result["alerts_count"] = len(alerts)
+        goals = a.get("weekly_goals") or []
+        if isinstance(goals, str):
+            try:
+                goals = json.loads(goals)
+            except Exception:
+                goals = []
+        result["goals_count"] = len(goals)
+
+    return result
+
 
 if __name__ == "__main__":
     import uvicorn
