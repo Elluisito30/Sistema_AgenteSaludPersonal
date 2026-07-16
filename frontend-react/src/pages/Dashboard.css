@@ -2650,8 +2650,234 @@ html.dark .empty-state p {
   border: 1px solid var(--border);
 }
 
+/* ===== ML Model Comparison ===== */
+.report-summary-ml-compare {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.ml-compare-grid {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.ml-model-card {
+  flex: 1;
+  padding: 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-light);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ml-model-secondary {
+  opacity: 0.7;
+}
+
+.ml-model-divider {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding: 0 4px;
+}
+
+.ml-model-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ml-model-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.ml-model-tag {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.ml-model-primary {
+  background: var(--success-bg);
+  color: var(--success-text);
+  border: 1px solid var(--success-border);
+}
+
+.ml-model-secondary-tag {
+  background: var(--info-bg);
+  color: var(--info-text);
+  border: 1px solid var(--info-border);
+}
+
+.ml-model-accuracy {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ml-accuracy-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1;
+}
+
+.ml-accuracy-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.ml-model-features {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ===== Diary Summary Card ===== */
+.report-summary-diary {
+  grid-column: 1 / -1;
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.diary-summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.diary-summary-stats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.diary-stat-badge {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.diary-streak {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border: 1px solid var(--warning-border);
+}
+
+.diary-entries {
+  background: var(--info-bg);
+  color: var(--info-text);
+  border: 1px solid var(--info-border);
+}
+
+.diary-today-summary strong {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.diary-today-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.diary-pill {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--surface-light);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* ===== Premium UX: Glassmorphism & Animations ===== */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.report-summary-card,
+.ml-model-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.report-summary-card:hover,
+.ml-model-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.diary-pill {
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.diary-pill:hover {
+  background: var(--primary-bg);
+  border-color: var(--primary-border);
+}
+
+/* Dashboard Tab Navigation (post-sidebar extraction) */
+.dashboard-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.dashboard-tab {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.dashboard-tab:hover {
+  background: var(--surface-light);
+  color: var(--text);
+}
+
+.dashboard-tab.active {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.main-content-dashboard {
+  padding: 24px 32px;
+}
+
 @media (max-width: 768px) {
-  .reports-summaries {
-    grid-template-columns: 1fr;
+  .dashboard-tabs {
+    padding: 8px 12px;
+  }
+  .main-content-dashboard {
+    padding: 16px;
   }
 }

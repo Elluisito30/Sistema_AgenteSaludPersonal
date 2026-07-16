@@ -3,10 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useApi } from '../hooks/useApi';
 import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
-import LanguageSwitcher from '../components/LanguageSwitcher';
-import ThemeToggle from '../components/ThemeToggle';
 import ExplainabilityCenter from '../components/ExplainabilityCenter';
-import HealthAssistant from '../components/HealthAssistant';
 import './Dashboard.css';
 
 function Dashboard() {
@@ -25,6 +22,7 @@ function Dashboard() {
   const [message, setMessage] = useState(null);
   const [sleepHours, setSleepHours] = useState(7);
   const [reportLanguage, setReportLanguage] = useState('es');
+  const [diarySummary, setDiarySummary] = useState(null);
 
   // Load profile on mount
   useEffect(() => {
@@ -63,6 +61,11 @@ function Dashboard() {
       }
       const importance = await fetch('/eda/models/importance.json').then(r => r.ok ? r.json() : null).catch(() => null);
       if (importance) setImportanceData(importance);
+
+      try {
+        const diaryRes = await apiRequest('/api/diary/summary', 'GET', null, token);
+        if (diaryRes.success) setDiarySummary(diaryRes.data);
+      } catch (e) { /* diary optional */ }
     } catch (e) {
       console.error('Error loading predictions:', e);
     }
@@ -232,79 +235,27 @@ function Dashboard() {
   };
 
   return (
-    <div className="dashboard-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <div className="app-logo">
-            🏥 {t('app.title')}
-          </div>
-          <div className="sidebar-controls">
-            <LanguageSwitcher />
-            <ThemeToggle />
-          </div>
-          <div className="user-card">
-            <div className="user-avatar">{user?.full_name?.[0]?.toUpperCase() || 'U'}</div>
-            <div className="user-info">
-              <div className="user-name">{user?.full_name || 'Usuario'}</div>
-              <div className="user-email">{user?.email || ''}</div>
-            </div>
-          </div>
-        </div>
+    <div>
+      <div className="dashboard-tabs">
+        {[
+          ['dashboard', '📊', t('nav.dashboard')],
+          ['nutrition', '🥗', t('nav.nutrition')],
+          ['exercise', '💪', t('nav.exercise')],
+          ['predictions', '📈', t('nav.predictions')],
+          ['explainability', '🔍', t('nav.explainability')],
+          ['reports', '📑', t('nav.reports')],
+        ].map(([key, icon, label]) => (
+          <button
+            key={key}
+            className={`dashboard-tab ${activeTab === key ? 'active' : ''}`}
+            onClick={() => { setActiveTab(key); if (key !== 'dashboard') loadPredictions(); }}
+          >
+            {icon} {label}
+          </button>
+        ))}
+      </div>
 
-        <nav className="nav-menu">
-          <button
-            className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
-          >
-            📊 {t('nav.dashboard')}
-          </button>
-          <button
-            className={`nav-item ${activeTab === 'nutrition' ? 'active' : ''}`}
-            onClick={() => setActiveTab('nutrition')}
-          >
-            🥗 {t('nav.nutrition')}
-          </button>
-          <button
-            className={`nav-item ${activeTab === 'exercise' ? 'active' : ''}`}
-            onClick={() => setActiveTab('exercise')}
-          >
-            💪 {t('nav.exercise')}
-          </button>
-          <button
-            className={`nav-item ${activeTab === 'predictions' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab('predictions');
-              loadPredictions();
-            }}
-          >
-            📈 {t('nav.predictions')}
-          </button>
-          <button
-            className={`nav-item ${activeTab === 'explainability' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab('explainability');
-              loadPredictions();
-            }}
-          >
-            🔍 {t('nav.explainability')}
-          </button>
-          <button
-            className={`nav-item ${activeTab === 'reports' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab('reports');
-              loadPredictions();
-            }}
-          >
-            📑 {t('nav.reports')}
-          </button>
-        </nav>
-
-        <button className="btn-logout" onClick={logout}>
-          🚪 {t('nav.logout')}
-        </button>
-      </aside>
-
-      <main className="main-content">
+      <main className="main-content-dashboard">
         <h1 className="page-title">{t('app.subtitle')}</h1>
         <p className="page-subtitle">{t('app.description')}</p>
 
@@ -866,6 +817,88 @@ function Dashboard() {
                       <p style={{ color: 'var(--text-secondary)' }}>{t('explainability.noData')}</p>
                     )}
                   </div>
+
+                  <div className="report-summary-card report-summary-ml-compare">
+                    <h3>📊 {t('enhanced.mlModelComparison')}</h3>
+                    <div className="ml-compare-grid">
+                      <div className="ml-model-card">
+                        <div className="ml-model-header">
+                          <span className="ml-model-name">XGBoost</span>
+                          <span className="ml-model-tag ml-model-primary">{t('enhanced.productionModel')}</span>
+                        </div>
+                        <div className="ml-model-accuracy">
+                          <span className="ml-accuracy-value">99.05%</span>
+                          <span className="ml-accuracy-label">{t('enhanced.accuracy')}</span>
+                        </div>
+                        <div className="ml-model-features">
+                          <span>11 {t('enhanced.featuresUsed')}</span>
+                          <span>117 {t('enhanced.trainingSamples')}</span>
+                        </div>
+                      </div>
+                      <div className="ml-model-divider">vs</div>
+                      <div className="ml-model-card ml-model-secondary">
+                        <div className="ml-model-header">
+                          <span className="ml-model-name">Neural Network</span>
+                          <span className="ml-model-tag ml-model-secondary-tag">Keras/TensorFlow</span>
+                        </div>
+                        <div className="ml-model-accuracy">
+                          <span className="ml-accuracy-value">93.69%</span>
+                          <span className="ml-accuracy-label">{t('enhanced.accuracy')}</span>
+                        </div>
+                        <div className="ml-model-features">
+                          <span>11 {t('enhanced.featuresUsed')}</span>
+                          <span>2 {t('enhanced.hiddenLayers')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="report-summary-card report-summary-diary">
+                    <h3>📝 {t('enhanced.diarySummary')}</h3>
+                    {diarySummary ? (
+                      <div className="diary-summary-content">
+                        <div className="diary-summary-stats">
+                          {diarySummary.streak_days > 0 && (
+                            <div className="diary-stat-badge diary-streak">
+                              🔥 {diarySummary.streak_days} {t('enhanced.streakDays')}
+                            </div>
+                          )}
+                          <div className="diary-stat-badge diary-entries">
+                            📋 {diarySummary.total_entries || 0} {t('enhanced.totalEntries')}
+                          </div>
+                        </div>
+                        {diarySummary.today && (
+                          <div className="diary-today-summary">
+                            <strong>{t('diary.today')}:</strong>
+                            <div className="diary-today-pills">
+                              {diarySummary.today.water_liters > 0 && (
+                                <span className="diary-pill diary-water">💧 {diarySummary.today.water_liters}L</span>
+                              )}
+                              {diarySummary.today.calories_consumed > 0 && (
+                                <span className="diary-pill diary-calories">🔥 {diarySummary.today.calories_consumed}kcal</span>
+                              )}
+                              {diarySummary.today.exercise_minutes > 0 && (
+                                <span className="diary-pill diary-exercise">🏃 {diarySummary.today.exercise_minutes}min</span>
+                              )}
+                              {diarySummary.today.sleep_hours > 0 && (
+                                <span className="diary-pill diary-sleep">😴 {diarySummary.today.sleep_hours}h</span>
+                              )}
+                              {diarySummary.today.mood && (
+                                <span className="diary-pill diary-mood">😊 {t(`onboarding.moods.${diarySummary.today.mood}`)}</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        {(!diarySummary.today || Object.keys(diarySummary.today).length === 0) && diarySummary.total_entries === 0 && (
+                          <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+                            {t('diary.noEntries')} — <a href="/diary" style={{ color: 'var(--primary)' }}>{t('enhanced.startTracking')}</a>
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>{t('enhanced.loadingDiary')}</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="reports-header">
@@ -1346,12 +1379,6 @@ function Dashboard() {
           </div>
         )}
       </main>
-
-      <HealthAssistant
-        analysis={analysis}
-        latestPrediction={analysis?.ml_prediction || latestPrediction}
-        xaiData={analysis?.xai || null}
-      />
     </div>
   );
 }
