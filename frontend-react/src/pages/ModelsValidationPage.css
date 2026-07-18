@@ -1,0 +1,199 @@
+.models-validation-container {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.validation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.validation-header h1 {
+  font-size: 1.8rem;
+  color: var(--text-color, #333);
+}
+
+.btn-run {
+  background: var(--primary-color, #4361ee);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-run:hover {
+  background: var(--primary-dark, #3a56d4);
+  transform: translateY(-2px);
+}
+
+.validation-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(67, 97, 238, 0.2);
+  border-top-color: var(--primary-color, #4361ee);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1.5rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.winner-banner {
+  background: linear-gradient(135deg, #4361ee, #4cc9f0);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(67, 97, 238, 0.2);
+}
+
+.stats-section {
+  margin-bottom: 2rem;
+}
+
+.stats-section h3 {
+  margin-bottom: 1rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+.stat-card {
+  background: var(--card-bg, white);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border-left: 4px solid var(--primary-color, #4361ee);
+}
+
+.stat-card h4 {
+  margin-top: 0;
+  color: var(--text-color, #333);
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.stat-card p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--text-muted, #666);
+}
+
+.charts-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+}
+
+.chart-container {
+  background: var(--card-bg, white);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  height: 400px;
+}
+
+.matrices-section {
+  grid-column: 1 / -1;
+  margin-top: 2rem;
+}
+
+.matrices-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.matrix-plot {
+  background: var(--card-bg, white);
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.matrix-plot h4 {
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.competitors-section {
+  margin-bottom: 2rem;
+}
+
+.competitors-section h3 {
+  margin-bottom: 1rem;
+}
+
+.competitors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.competitor-card {
+  background: var(--card-bg, white);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  position: relative;
+  border: 2px solid transparent;
+}
+
+.competitor-card h4 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-color, #333);
+}
+
+.competitor-card p {
+  margin: 0;
+  color: var(--text-muted, #666);
+}
+
+.winner-card {
+  border-color: #4361ee;
+  background: rgba(67, 97, 238, 0.05);
+}
+
+.winner-badge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #f59e0b;
+  color: white;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}

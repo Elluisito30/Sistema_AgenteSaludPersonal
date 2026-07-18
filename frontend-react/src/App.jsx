@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import DiaryPage from './pages/DiaryPage';
 import FoodPage from './pages/FoodPage';
 import ProfilePage from './pages/ProfilePage';
+import ModelsValidationPage from './pages/ModelsValidationPage';
 import './i18n';
 
 function ProtectedRoute({ children }) {
@@ -52,6 +53,7 @@ function AppRoutes() {
         <Route path="diary" element={<DiaryPage />} />
         <Route path="food" element={<FoodPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="models" element={<ModelsValidationPage />} />
       </Route>
       <Route path="*" element={<Navigate to={token ? '/journey' : '/auth'} replace />} />
     </Routes>

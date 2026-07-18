@@ -49,6 +49,7 @@ function Dashboard() {
   const [message, setMessage] = useState(null);
   const [reportLanguage, setReportLanguage] = useState('es');
   const [diarySummary, setDiarySummary] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     loadInitialData();
@@ -151,6 +152,27 @@ function Dashboard() {
       await loadPredictions();
     } else {
       setMessage({ type: 'error', text: result.error });
+    }
+    setLoading(false);
+    setTimeout(() => setMessage(null), 3000);
+  };
+
+  const confirmDeleteAnalysis = async () => {
+    setShowDeleteConfirm(false);
+    setLoading(true);
+    setMessage({ type: 'info', text: 'Eliminando análisis...' });
+
+    const result = await apiRequest('/api/analysis', 'DELETE', null, token);
+
+    if (result.success) {
+      setAnalysis(null);
+      setLatestPrediction(null);
+      setSharedAnalysis(null);
+      setSharedPrediction(null);
+      setSharedXai(null);
+      setMessage({ type: 'success', text: 'Análisis eliminado correctamente.' });
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Error al eliminar' });
     }
     setLoading(false);
     setTimeout(() => setMessage(null), 3000);
@@ -304,7 +326,7 @@ function Dashboard() {
           </div>
         ) : null}
 
-        {!initialLoading && activeTab === 'dashboard' && (
+        {!initialLoading && (
           <div className="tab-content">
             <div className="analysis-grid">
               <div>
@@ -447,6 +469,41 @@ function Dashboard() {
                       t('profile.analyze')
                     )}
                   </button>
+                  {analysis && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn-danger"
+                        style={{ marginTop: 10, width: '100%', background: 'var(--danger)', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
+                        onClick={() => setShowDeleteConfirm(true)}
+                        disabled={loading}
+                      >
+                        🗑️ Eliminar Análisis
+                      </button>
+
+                      {showDeleteConfirm && (
+                        <div style={{ marginTop: '10px', padding: '15px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid var(--danger)' }}>
+                          <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: 'var(--danger)', fontWeight: 600, lineHeight: 1.4 }}>¿Estás seguro de eliminar permanentemente todos tus análisis y proyecciones? Tendrás que generar uno nuevo.</p>
+                          <div style={{ display: 'flex', gap: '10px' }}>
+                            <button 
+                              type="button" 
+                              onClick={confirmDeleteAnalysis}
+                              style={{ flex: 1, padding: '8px', background: 'var(--danger)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                            >
+                              Sí, eliminar
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => setShowDeleteConfirm(false)}
+                              style={{ flex: 1, padding: '8px', background: 'var(--border)', color: 'var(--text-color, #333)', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                   {profile && (
                     <button
                       type="button"
@@ -461,9 +518,11 @@ function Dashboard() {
               </div>
 
               <div className="analysis-results">
-                {analysis ? (
-                  <div>
-                    <div className="analysis-top-cards">
+                {activeTab === 'dashboard' && (
+                  <>
+                    {analysis ? (
+                      <div>
+                        <div className="analysis-top-cards">
                       <div className={`analysis-card score ${getScoreBorderClass(analysis.health_score)}`}>
                         <div className="analysis-card-icon" title="Tu puntuación general de salud basada en todos los factores analizados">❤️</div>
                         <div className="analysis-card-label">{t('analysis.healthScore')}</div>
@@ -597,20 +656,18 @@ function Dashboard() {
                     </div>
 
                   </div>
-                ) : (
-                  <div className="empty-state">
-                    <div className="empty-state-icon">📋</div>
-                    <h3>{t('analysis.emptyTitle')}</h3>
-                    <p>{t('analysis.emptyDesc')}</p>
-                  </div>
+                    ) : (
+                      <div className="empty-state">
+                        <div className="empty-state-icon">📋</div>
+                        <h3>{t('analysis.emptyTitle')}</h3>
+                        <p>{t('analysis.emptyDesc')}</p>
+                      </div>
+                    )}
+                  </>
                 )}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {activeTab === 'nutrition' && (
-          <div className="tab-content">
+                {activeTab === 'nutrition' && (
+                  <div className="tab-content-inner">
             {analysis?.health_plan?.nutrition ? (
               <div>
                 <div className="metrics-grid metrics-grid-spaced">
@@ -679,11 +736,11 @@ function Dashboard() {
                 <p>{t('nutrition.emptyDesc')}</p>
               </div>
             )}
-          </div>
-        )}
+                  </div>
+                )}
 
-        {activeTab === 'exercise' && (
-          <div className="tab-content">
+                {activeTab === 'exercise' && (
+                  <div className="tab-content-inner">
             {analysis?.health_plan?.exercise ? (
               <div>
                 <div className="exercise-grid">
@@ -742,11 +799,11 @@ function Dashboard() {
                 <p>{t('exercise.emptyDesc')}</p>
               </div>
             )}
-          </div>
-        )}
+                  </div>
+                )}
 
-        {activeTab === 'reports' && (
-          <div className="tab-content">
+                {activeTab === 'reports' && (
+                  <div className="tab-content-inner">
             {analysis ? (
               <div>
                 <div className="reports-summaries">
@@ -1058,11 +1115,11 @@ function Dashboard() {
                 <p>{t('reports.noAnalysis')}</p>
               </div>
             )}
-          </div>
-        )}
+                  </div>
+                )}
 
-        {activeTab === 'predictions' && (
-          <div className="tab-content">
+                {activeTab === 'predictions' && (
+                  <div className="tab-content-inner">
             {loading ? (
               <div className="empty-state">
                 <div className="empty-state-icon small">⏳</div>
@@ -1089,19 +1146,19 @@ function Dashboard() {
                         <div className="ml-prediction-main">
                           <div className="ml-predicted-class">
                             <span className="ml-label">{t('predictions.predictedClass')}</span>
-                            <span className="ml-value">{analysis.ml_prediction.predicted_class.replace(/_/g, ' ')}</span>
+                            <span className="ml-value">{(analysis.ml_prediction.predicted_class || '').replace(/_/g, ' ')}</span>
                           </div>
                           <div className="ml-confidence">
                             <span className="ml-label">{t('predictions.confidence')}</span>
                             <div className="ml-confidence-bar-container">
-                              <div className="ml-confidence-bar" style={{ width: `${analysis.ml_prediction.confidence}%` }}></div>
+                              <div className="ml-confidence-bar" style={{ width: `${analysis.ml_prediction.confidence || 0}%` }}></div>
                             </div>
-                            <span className="ml-confidence-text">{analysis.ml_prediction.confidence.toFixed(1)}%</span>
+                            <span className="ml-confidence-text">{(analysis.ml_prediction.confidence || 0).toFixed(1)}%</span>
                           </div>
                         </div>
                         <div className="ml-prediction-details">
-                          <span className="ml-model-badge">{analysis.ml_prediction.model_used}</span>
-                          <span className="ml-inference-time">{analysis.ml_prediction.inference_time_ms.toFixed(2)}ms</span>
+                          <span className="ml-model-badge">{analysis.ml_prediction.model_used || 'N/A'}</span>
+                          <span className="ml-inference-time">{(analysis.ml_prediction.inference_time_ms || 0).toFixed(2)}ms</span>
                         </div>
                       </div>
                     </div>
@@ -1392,16 +1449,20 @@ function Dashboard() {
               );
             })()}
 
-          </div>
-        )}
+                  </div>
+                )}
 
-        {activeTab === 'explainability' && (
-          <div className="tab-content">
-            <ExplainabilityCenter
-              analysis={analysis}
-              latestPrediction={analysis?.ml_prediction || latestPrediction}
-              importanceData={importanceData}
-            />
+                {activeTab === 'explainability' && (
+                  <div className="tab-content-inner">
+                    <ExplainabilityCenter
+                      analysis={analysis}
+                      latestPrediction={analysis?.ml_prediction || latestPrediction}
+                      importanceData={importanceData}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </main>

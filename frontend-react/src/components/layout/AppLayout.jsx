@@ -106,6 +106,12 @@ function AppLayout() {
             >
               👤 {t('nav.profile')}
             </NavLink>
+            <NavLink
+              to="/models"
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            >
+              🧠 Validación de modelos
+            </NavLink>
           </nav>
 
           <button className="btn-logout" onClick={logout}>

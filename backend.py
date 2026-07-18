@@ -23,6 +23,7 @@ from datetime import datetime, timedelta, timezone
 from services.recommendation_engine import RecommendationEngine
 from services.ml.prediction_service import prediction_service
 from services.xai_service import xai_service
+from services.ml.statistical_evaluator import statistical_evaluator
 
 # ============================================
 # CONFIGURACIÓN
@@ -67,10 +68,10 @@ def resolve_hostname_to_ipv4(hostname):
         # Forzar resolución a IPv4
         addr_info = socket.getaddrinfo(hostname, None, socket.AF_INET, socket.SOCK_STREAM)
         ipv4_address = addr_info[0][4][0]
-        print(f"✅ {hostname} resuelto a IPv4: {ipv4_address}")
+        print(f"[OK] {hostname} resuelto a IPv4: {ipv4_address}")
         return ipv4_address
     except socket.gaierror as e:
-        print(f"❌ Error resolviendo {hostname}: {e}")
+        print(f"[ERROR] resolviendo {hostname}: {e}")
         return hostname
 
 # PostgreSQL Connection Pool - Supabase Session Pooler
@@ -87,7 +88,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "6cEr3VMzIOPpoLdH")
 ssl_mode = "require" if DB_HOST not in ("db", "localhost", "127.0.0.1") else "disable"
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode={ssl_mode}"
 
-print(f"🔗 Conectando a: {DB_HOST}:{DB_PORT} con usuario: {DB_USER}")
+print(f"Conectando a: {DB_HOST}:{DB_PORT} con usuario: {DB_USER}")
 # Connection pool - inicialización lazy (no conecta al inicio)
 db_pool = None
 
@@ -101,9 +102,9 @@ def get_db_pool():
                 maxconn=10,
                 dsn=DATABASE_URL
             )
-            print("✅ Conexión a base de datos establecida")
+            print("Conexion a base de datos establecida")
         except Exception as e:
-            print(f"❌ Error conectando a BD: {str(e)}")
+            print(f"Error conectando a BD: {str(e)}")
             raise
     return db_pool
 
@@ -351,7 +352,7 @@ def create_profile(profile: HealthProfile, user_id: int = Depends(verify_token))
                   profile.health_goals, profile.family_history, profile.favc,
                   profile.fcvc, profile.ch2o))
     
-    return {"message": "✅ Perfil actualizado exitosamente"}
+    return {"message": "Perfil actualizado exitosamente"}
 
 @app.get("/api/profile")
 def get_profile(user_id: int = Depends(verify_token)):
@@ -562,12 +563,12 @@ def analyze_health(user_id: int = Depends(verify_token)):
                  nutrient_recommendations, predicted_improvements,
                  ml_prediction, xai, analyzed_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb,
-                        %s::jsonb, %s::jsonb, %s::date, %s, %s::jsonb, %s::jsonb,
+                        %s::jsonb, %s::text[], %s::date, %s, %s::jsonb, %s::jsonb,
                         %s::jsonb, %s::jsonb, NOW())
             """, (
                 user_id, bmi, bmi_category, bmr, tdee, score,
                 health_risk, fitness_level, json.dumps(health_plan),
-                json.dumps(alerts), json.dumps(weekly_goals),
+                json.dumps(alerts), weekly_goals,
                 (datetime.now() + timedelta(days=30)).date(),
                 predictions.get("confidence_score", 0.85),
                 json.dumps({}), json.dumps({}),
@@ -594,9 +595,9 @@ def analyze_health(user_id: int = Depends(verify_token)):
                 expires_at
             ))
     except Exception as e:
-        print(f"⚠️ Error guardando análisis en BD: {e}")
+        print(f"Error guardando analisis en BD: {e}")
 
-    print(f"✅ Análisis completado (RecommendationEngine) - health_score: {score}")
+    print(f"Analisis completado (RecommendationEngine) - health_score: {score}")
     return analysis_result
 
 # ============================================
@@ -653,6 +654,18 @@ def get_analysis(analysis_id: int, user_id: int = Depends(verify_token)):
                 }
         
         return convert_to_json_serializable(analysis_dict)
+
+@app.delete("/api/analysis")
+def delete_all_analyses(user_id: int = Depends(verify_token)):
+    """Eliminar todos los análisis del usuario para empezar de nuevo"""
+    try:
+        with get_db_cursor() as cursor:
+            cursor.execute("DELETE FROM health_predictions WHERE user_id = %s", (user_id,))
+            cursor.execute("DELETE FROM health_analyses WHERE user_id = %s", (user_id,))
+        return {"message": "Análisis eliminados correctamente"}
+    except Exception as e:
+        print(f"Error deleting analysis: {e}")
+        raise HTTPException(status_code=500, detail="Error al eliminar los análisis")
 
 # ============================================
 # ENDPOINTS DE PROGRESO DIARIO
@@ -782,6 +795,61 @@ def shutdown():
 # ============================================
 # ENDPOINTS DE PREDICCIONES
 # ============================================
+
+@app.get("/api/models/current")
+def get_current_model(user_id: int = Depends(verify_token)):
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+    if os.path.exists(config_path):
+        with open(config_path, "r") as f:
+            return json.load(f)
+    return {"active_model": "XGBoost", "type": "backend"}
+
+@app.post("/api/models/activate")
+def activate_model(data: dict, user_id: int = Depends(verify_token)):
+    model_name = data.get("active_model")
+    model_type = data.get("type", "backend")
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+    
+    config = {
+        "active_model": model_name,
+        "type": model_type,
+        "model_path": f"eda/models/{model_name.lower()}.bin"
+    }
+    with open(config_path, "w") as f:
+        json.dump(config, f)
+        
+    # Re-initialize prediction service
+    prediction_service._initialized = False
+    prediction_service.__init__()
+    return {"message": "Model activated successfully", "config": config}
+
+@app.get("/api/models/test-data")
+def get_test_data(user_id: int = Depends(verify_token)):
+    return statistical_evaluator.get_test_dataset_for_frontend()
+
+@app.post("/api/models/evaluate-all")
+def evaluate_all_models(data: dict, user_id: int = Depends(verify_token)):
+    frontend_y_pred = data.get("y_pred", [])
+    if not frontend_y_pred:
+        raise HTTPException(status_code=400, detail="Faltan las predicciones del frontend")
+        
+    results = statistical_evaluator.evaluate_all(frontend_y_pred)
+    
+    # Auto-activate winner
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+    winner = results["winner"]
+    winner_type = "frontend" if winner == "FrontendJS" else "backend"
+    config = {
+        "active_model": winner,
+        "type": winner_type,
+        "model_path": ""
+    }
+    with open(config_path, "w") as f:
+        json.dump(config, f)
+    prediction_service._initialized = False
+    prediction_service.__init__()
+    
+    return results
 
 @app.get("/api/predictions/latest")
 def get_latest_prediction(user_id: int = Depends(verify_token)):
@@ -1621,10 +1689,10 @@ def get_journey_summary(user_id: int = Depends(verify_token)):
 if __name__ == "__main__":
     import uvicorn
     print("=" * 60)
-    print("🚀 Health AI API Server con PostgreSQL + n8n")
+    print("Health AI API Server con PostgreSQL + n8n")
     print("=" * 60)
-    print(f"📊 Database: {DB_HOST}")
-    print(f"🔗 n8n Webhook: {N8N_WEBHOOK_URL}")
-    print("📚 Docs: http://localhost:8000/docs")
+    print(f"Database: {DB_HOST}")
+    print(f"n8n Webhook: {N8N_WEBHOOK_URL}")
+    print("Docs: http://localhost:8000/docs")
     print("=" * 60)
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("backend:app", host="0.0.0.0", port=8000, reload=True)
