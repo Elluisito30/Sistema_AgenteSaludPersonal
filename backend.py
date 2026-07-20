@@ -24,6 +24,16 @@ from services.recommendation_engine import RecommendationEngine
 from services.ml.prediction_service import prediction_service
 from services.xai_service import xai_service
 from services.ml.statistical_evaluator import statistical_evaluator
+from services.ml.training_service import training_service
+
+# Forzar recarga del servicio de predicción después de leer config.json
+config_path = os.path.join(os.path.dirname(__file__), "config.json")
+if os.path.exists(config_path):
+    with open(config_path, "r") as f:
+        config = json.load(f)
+        if config.get("type") == "backend":
+            prediction_service._initialized = False
+            prediction_service.__init__()
 
 # ============================================
 # CONFIGURACIÓN
@@ -554,6 +564,14 @@ def analyze_health(user_id: int = Depends(verify_token)):
 
     # Guardar análisis en la BD
     try:
+        # Convertir weekly_goals a strings simples si contiene objetos
+        weekly_goals_simple = []
+        for goal in weekly_goals:
+            if isinstance(goal, dict):
+                weekly_goals_simple.append(goal.get('key', str(goal)))
+            else:
+                weekly_goals_simple.append(str(goal))
+
         with get_db_cursor() as cursor:
             cursor.execute("""
                 INSERT INTO health_analyses
@@ -568,7 +586,7 @@ def analyze_health(user_id: int = Depends(verify_token)):
             """, (
                 user_id, bmi, bmi_category, bmr, tdee, score,
                 health_risk, fitness_level, json.dumps(health_plan),
-                json.dumps(alerts), weekly_goals,
+                json.dumps(alerts), weekly_goals_simple,
                 (datetime.now() + timedelta(days=30)).date(),
                 predictions.get("confidence_score", 0.85),
                 json.dumps({}), json.dumps({}),
@@ -583,6 +601,11 @@ def analyze_health(user_id: int = Depends(verify_token)):
                 "gender": gender, "activity_level": activity
             }
             expires_at = (datetime.now() + timedelta(days=90)).isoformat()
+            
+            print(f"Guardando predicción: user_id={user_id}, analysis_id={analysis_id}")
+            print(f"Predictions data: {predictions}")
+            print(f"Profile snapshot: {profile_snapshot}")
+            
             cursor.execute("""
                 INSERT INTO health_predictions
                 (user_id, analysis_id, profile_snapshot, predictions_data,
@@ -594,6 +617,8 @@ def analyze_health(user_id: int = Depends(verify_token)):
                 predictions['model_used'], predictions['confidence_score'],
                 expires_at
             ))
+            
+            print(f"Predicción guardada exitosamente")
     except Exception as e:
         print(f"Error guardando analisis en BD: {e}")
 
@@ -829,16 +854,19 @@ def get_test_data(user_id: int = Depends(verify_token)):
 
 @app.post("/api/models/evaluate-all")
 def evaluate_all_models(data: dict, user_id: int = Depends(verify_token)):
+    print("Received evaluate-all request")
     frontend_y_pred = data.get("y_pred", [])
-    if not frontend_y_pred:
-        raise HTTPException(status_code=400, detail="Faltan las predicciones del frontend")
+    print(f"Frontend predictions: {len(frontend_y_pred)} items")
+    
+    # Note: FrontendJS is no longer used, so empty predictions are acceptable
+    # The evaluation will only use backend models (XGBoost, RandomForest, MLP, LogisticRegression)
         
     results = statistical_evaluator.evaluate_all(frontend_y_pred)
     
     # Auto-activate winner
     config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
     winner = results["winner"]
-    winner_type = "frontend" if winner == "FrontendJS" else "backend"
+    winner_type = "backend"  # Always backend now since FrontendJS is removed
     config = {
         "active_model": winner,
         "type": winner_type,
@@ -851,9 +879,48 @@ def evaluate_all_models(data: dict, user_id: int = Depends(verify_token)):
     
     return results
 
+# ============================================
+# ENDPOINTS DE ENTRENAMIENTO
+# ============================================
+
+@app.get("/api/training/dataset-info")
+def get_dataset_info(user_id: int = Depends(verify_token)):
+    return training_service.get_dataset_info()
+
+@app.get("/api/training/hyperparameters")
+def get_hyperparameters(user_id: int = Depends(verify_token)):
+    return training_service.get_hyperparameters()
+
+@app.get("/api/training/history")
+def get_training_history(user_id: int = Depends(verify_token)):
+    return training_service.get_training_history()
+
+@app.get("/api/training/model-status")
+def get_model_status(user_id: int = Depends(verify_token)):
+    return training_service.get_model_status()
+
+@app.post("/api/training/run")
+def run_training(user_id: int = Depends(verify_token)):
+    return training_service.run_training()
+
+@app.post("/api/training/run-classical")
+def run_classical_training(user_id: int = Depends(verify_token)):
+    return training_service.run_classical_training()
+
+@app.post("/api/training/run-all")
+def run_all_training(user_id: int = Depends(verify_token)):
+    return training_service.run_all_training()
+
+@app.get("/api/training/model-type")
+def get_model_type(user_id: int = Depends(verify_token)):
+    """Check if using pretrained or custom models."""
+    return training_service.get_model_type()
+
 @app.get("/api/predictions/latest")
 def get_latest_prediction(user_id: int = Depends(verify_token)):
     """Obtener última predicción activa del usuario"""
+    
+    print(f"Buscando predicción para user_id={user_id}")
     
     with get_db_cursor(commit=False) as cursor:
         cursor.execute("""
@@ -875,13 +942,18 @@ def get_latest_prediction(user_id: int = Depends(verify_token)):
         
         prediction = cursor.fetchone()
         
+        print(f"Resultado de búsqueda: {prediction}")
+        
         if not prediction:
+            print(f"No se encontraron predicciones activas para user_id={user_id}")
             raise HTTPException(
                 status_code=404, 
                 detail="No hay predicciones activas. Realiza un análisis primero."
             )
         
         result = convert_to_json_serializable(dict(prediction))
+        
+        print(f"Predicción encontrada: {result}")
         
         # ✅ FIX: Comparar con datetime AWARE
         if result.get('expires_at'):
@@ -890,6 +962,8 @@ def get_latest_prediction(user_id: int = Depends(verify_token)):
                 # Parsear string ISO y hacerlo timezone-aware
                 expires = datetime.fromisoformat(expires_str.replace('Z', '+00:00'))
                 now = datetime.now(timezone.utc)  # ← USAR UTC
+                
+                print(f"Expira: {expires}, Ahora: {now}")
                 
                 if expires < now:
                     result['is_expired'] = True

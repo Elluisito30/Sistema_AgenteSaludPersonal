@@ -39,8 +39,6 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profile, setProfile] = useState(null);
   const [analysis, setAnalysis] = useState(null);
-  const [latestPrediction, setLatestPrediction] = useState(null);
-  const [predictionsHistory, setPredictionsHistory] = useState(null);
   const [timelineData, setTimelineData] = useState(null);
   const [statsData, setStatsData] = useState(null);
   const [importanceData, setImportanceData] = useState(null);
@@ -50,13 +48,26 @@ function Dashboard() {
   const [reportLanguage, setReportLanguage] = useState('es');
   const [diarySummary, setDiarySummary] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [modelType, setModelType] = useState(null);
 
   useEffect(() => {
     loadInitialData();
+    loadModelType();
   }, []);
 
+  const loadModelType = async () => {
+    try {
+      const res = await apiRequest('/api/training/model-type', 'GET', null, token);
+      if (res.success) {
+        setModelType(res.data);
+      }
+    } catch (e) {
+      console.error('Error loading model type:', e);
+    }
+  };
+
   useEffect(() => {
-    if (activeTab === 'predictions' || activeTab === 'explainability') {
+    if (activeTab === 'explainability') {
       loadPredictions();
     }
   }, [activeTab]);
@@ -81,16 +92,10 @@ function Dashboard() {
       if (latestAnalysis) {
         setAnalysis(latestAnalysis);
         setSharedAnalysis(latestAnalysis);
-        if (latestAnalysis.ml_prediction) {
-          setLatestPrediction(latestAnalysis.ml_prediction);
-          setSharedPrediction(latestAnalysis.ml_prediction);
-        }
         if (latestAnalysis.xai) {
           setSharedXai(latestAnalysis.xai);
         }
       }
-
-      await loadPredictions();
     } catch (e) {
       console.error('Error loading dashboard data:', e);
     }
@@ -99,15 +104,6 @@ function Dashboard() {
 
   const loadPredictions = async () => {
     try {
-      const latest = await apiRequest('/api/predictions/latest', 'GET', null, token);
-      if (latest.success) {
-        setLatestPrediction(latest.data);
-        setSharedPrediction(latest.data);
-      }
-      const history = await apiRequest('/api/predictions/history?limit=5', 'GET', null, token);
-      if (history.success) {
-        setPredictionsHistory(history.data);
-      }
       const timeline = await apiRequest('/api/predictions/timeline', 'GET', null, token);
       if (timeline.success) {
         setTimelineData(timeline.data);
@@ -166,9 +162,7 @@ function Dashboard() {
 
     if (result.success) {
       setAnalysis(null);
-      setLatestPrediction(null);
       setSharedAnalysis(null);
-      setSharedPrediction(null);
       setSharedXai(null);
       setMessage({ type: 'success', text: 'Análisis eliminado correctamente.' });
     } else {
@@ -293,7 +287,6 @@ function Dashboard() {
           ['dashboard', '📊', t('nav.dashboard')],
           ['nutrition', '🥗', t('nav.nutrition')],
           ['exercise', '💪', t('nav.exercise')],
-          ['predictions', '📈', t('nav.predictions')],
           ['explainability', '🔍', t('nav.explainability')],
           ['reports', '📑', t('nav.reports')],
         ].map(([key, icon, label]) => (
@@ -308,8 +301,28 @@ function Dashboard() {
       </div>
 
       <main className="main-content-dashboard">
-        <h1 className="page-title">{t('app.subtitle')}</h1>
-        <p className="page-subtitle">{t('app.description')}</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div>
+            <h1 className="page-title">{t('app.subtitle')}</h1>
+            <p className="page-subtitle">{t('app.description')}</p>
+          </div>
+          {modelType && (
+            <div style={{
+              padding: '6px 12px',
+              borderRadius: '12px',
+              background: modelType.model_type === 'custom' ? '#d4edda' : '#e2e3e5',
+              color: modelType.model_type === 'custom' ? '#155724' : '#383d41',
+              fontSize: '0.75rem',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span>{modelType.model_type === 'custom' ? '✅' : 'ℹ️'}</span>
+              <span>Modelos: {modelType.model_type === 'custom' ? 'Personalizados' : 'Pre-entrenados'}</span>
+            </div>
+          )}
+        </div>
 
         {message && (
           <div className={`message ${message.type}`}>
@@ -1117,341 +1130,6 @@ function Dashboard() {
             )}
                   </div>
                 )}
-
-                {activeTab === 'predictions' && (
-                  <div className="tab-content-inner">
-            {loading ? (
-              <div className="empty-state">
-                <div className="empty-state-icon small">⏳</div>
-                <h3>{t('predictions.loading')}</h3>
-              </div>
-            ) : (() => {
-              const predData = latestPrediction || (analysis && analysis.predictions ? {
-                profile_snapshot: {
-                  weight: analysis.bmi * ((analysis.bmi < 18.5 ? 170 : (analysis.bmi < 25 ? 175 : 180)) / 100) ** 2,
-                  height: analysis.bmi < 18.5 ? 170 : (analysis.bmi < 25 ? 175 : 180)
-                },
-                predictions_data: analysis.predictions.predictions_data
-              } : null);
-
-              return predData ? (
-                <div>
-                  {analysis?.ml_prediction?.predicted_class && (
-                    <div className="ml-prediction-card">
-                      <div className="ml-prediction-header">
-                        <span className="ml-prediction-icon">🤖</span>
-                        <h3>{t('predictions.mlPrediction')}</h3>
-                      </div>
-                      <div className="ml-prediction-body">
-                        <div className="ml-prediction-main">
-                          <div className="ml-predicted-class">
-                            <span className="ml-label">{t('predictions.predictedClass')}</span>
-                            <span className="ml-value">{(analysis.ml_prediction.predicted_class || '').replace(/_/g, ' ')}</span>
-                          </div>
-                          <div className="ml-confidence">
-                            <span className="ml-label">{t('predictions.confidence')}</span>
-                            <div className="ml-confidence-bar-container">
-                              <div className="ml-confidence-bar" style={{ width: `${analysis.ml_prediction.confidence || 0}%` }}></div>
-                            </div>
-                            <span className="ml-confidence-text">{(analysis.ml_prediction.confidence || 0).toFixed(1)}%</span>
-                          </div>
-                        </div>
-                        <div className="ml-prediction-details">
-                          <span className="ml-model-badge">{analysis.ml_prediction.model_used || 'N/A'}</span>
-                          <span className="ml-inference-time">{(analysis.ml_prediction.inference_time_ms || 0).toFixed(2)}ms</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {analysis?.xai && (
-                    <div className="xai-section">
-                      <div className="xai-card xai-card-explanation">
-                        <div className="xai-card-header">
-                          <span className="xai-card-icon">💡</span>
-                          <h3>{t('xai.title')}</h3>
-                        </div>
-                        <div className="xai-card-body">
-                          <p className="xai-summary">{analysis.xai.summary}</p>
-                          <p className="xai-main-reason">{analysis.xai.main_reason}</p>
-                        </div>
-                      </div>
-
-                      <div className="xai-card xai-card-confidence">
-                        <div className="xai-card-header">
-                          <span className="xai-card-icon">🎯</span>
-                          <h3>{t('xai.confidenceLevel')}</h3>
-                        </div>
-                        <div className="xai-card-body">
-                          <p className="xai-confidence-text">{analysis.xai.confidence_text}</p>
-                          {analysis.ml_prediction?.predicted_class && (
-                            <div className="xai-confidence-meter">
-                              <div className="xai-confidence-bar-bg">
-                                <div
-                                  className="xai-confidence-bar-fill"
-                                  style={{
-                                    width: `${analysis.ml_prediction.confidence}%`,
-                                    background: analysis.ml_prediction.confidence >= 95
-                                      ? 'var(--secondary)' : analysis.ml_prediction.confidence >= 80
-                                      ? 'var(--primary)' : analysis.ml_prediction.confidence >= 60
-                                      ? 'var(--accent)' : 'var(--danger)',
-                                  }}
-                                />
-                              </div>
-                              <span className="xai-confidence-value">
-                                {analysis.ml_prediction.confidence.toFixed(1)}%
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {analysis.xai.important_features?.length > 0 && (
-                        <div className="xai-card xai-card-features">
-                          <div className="xai-card-header">
-                            <span className="xai-card-icon">📊</span>
-                            <h3>{t('xai.importantFeatures')}</h3>
-                          </div>
-                          <div className="xai-card-body">
-                            {analysis.xai.important_features.map((feat, i) => (
-                              <div className="xai-feature-row" key={i}>
-                                <span className="xai-feature-name">{feat.display_name}</span>
-                                <div className="xai-feature-bar-container">
-                                  <div
-                                    className="xai-feature-bar"
-                                    style={{ width: `${Math.max(feat.importance * 100 * 1.3, 2)}%` }}
-                                  />
-                                </div>
-                                <span className={`xai-feature-badge xai-feature-${feat.level}`}>
-                                  {feat.level === 'high' ? t('xai.high') : feat.level === 'medium' ? t('xai.medium') : t('xai.low')}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="xai-card xai-card-clinical">
-                        <div className="xai-card-header">
-                          <span className="xai-card-icon">🩺</span>
-                          <h3>{t('xai.clinicalInterpretation')}</h3>
-                        </div>
-                        <div className="xai-card-body">
-                          <p>{analysis.xai.risk_explanation}</p>
-                          {analysis.xai.recommendations?.length > 0 && (
-                            <div className="xai-recommendations">
-                              <strong>{t('xai.recommendations')}</strong>
-                              <ul>
-                                {analysis.xai.recommendations.map((rec, i) => (
-                                  <li key={i}>{rec}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="xai-scenarios-grid">
-                        {analysis.xai.scenario_follow && (
-                          <div className="xai-card xai-card-scenario xai-card-follow">
-                            <div className="xai-card-header">
-                              <span className="xai-card-icon">✅</span>
-                              <h3>{analysis.xai.scenario_follow.title}</h3>
-                            </div>
-                            <div className="xai-card-body">
-                              <div className="xai-scenario-metrics">
-                                <div className="xai-scenario-metric">
-                                  <span className="xai-scenario-label">{t('xai.projectedWeight')}</span>
-                                  <span className="xai-scenario-value">{analysis.xai.scenario_follow.projected_weight_kg} kg</span>
-                                </div>
-                                <div className="xai-scenario-metric">
-                                  <span className="xai-scenario-label">{t('xai.projectedBMI')}</span>
-                                  <span className="xai-scenario-value">{analysis.xai.scenario_follow.projected_bmi}</span>
-                                </div>
-                                <div className="xai-scenario-metric">
-                                  <span className="xai-scenario-label">{t('xai.expectedCategory')}</span>
-                                  <span className="xai-scenario-value">{analysis.xai.scenario_follow.projected_category}</span>
-                                </div>
-                              </div>
-                              <p className="xai-scenario-text">{analysis.xai.scenario_follow.evolution_text}</p>
-                            </div>
-                          </div>
-                        )}
-
-                        {analysis.xai.scenario_ignore && (
-                          <div className="xai-card xai-card-scenario xai-card-ignore">
-                            <div className="xai-card-header">
-                              <span className="xai-card-icon">⚠️</span>
-                              <h3>{analysis.xai.scenario_ignore.title}</h3>
-                            </div>
-                            <div className="xai-card-body">
-                              <div className="xai-scenario-metrics">
-                                <div className="xai-scenario-metric">
-                                  <span className="xai-scenario-label">{t('xai.estimatedWeight')}</span>
-                                  <span className="xai-scenario-value">{analysis.xai.scenario_ignore.projected_weight_kg} kg</span>
-                                </div>
-                                <div className="xai-scenario-metric">
-                                  <span className="xai-scenario-label">{t('xai.estimatedBMI')}</span>
-                                  <span className="xai-scenario-value">{analysis.xai.scenario_ignore.projected_bmi}</span>
-                                </div>
-                                <div className="xai-scenario-metric">
-                                  <span className="xai-scenario-label">{t('xai.estimatedCategory')}</span>
-                                  <span className="xai-scenario-value">{analysis.xai.scenario_ignore.projected_category}</span>
-                                </div>
-                              </div>
-                              <p className="xai-scenario-text">{analysis.xai.scenario_ignore.risk_text}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="prediction-card">
-                    <h3>{t('predictions.latestPrediction')}</h3>
-                    <div className="metrics-grid">
-                      <div className="metric-card" title="Tu peso actual al momento del análisis">
-                        <div className="metric-icon">📈</div>
-                        <div className="metric-label">{t('predictions.initialWeight')}</div>
-                        <div className="metric-value">{Math.round(predData.profile_snapshot?.weight * 10) / 10} kg</div>
-                      </div>
-                      <div className="metric-card" title="Peso proyectado a 2 semanas según el modelo predictivo">
-                        <div className="metric-icon">🔮</div>
-                        <div className="metric-label">{t('predictions.twoWeeks')}</div>
-                        <div className="metric-value">
-                          {predData.predictions_data?.predictions?.['2_weeks']?.weight_kg} kg
-                        </div>
-                      </div>
-                      <div className="metric-card" title="Peso proyectado a 1 mes según el modelo predictivo">
-                        <div className="metric-icon">🔮</div>
-                        <div className="metric-label">{t('predictions.oneMonth')}</div>
-                        <div className="metric-value">
-                          {predData.predictions_data?.predictions?.['1_month']?.weight_kg} kg
-                        </div>
-                      </div>
-                      <div className="metric-card" title="Peso proyectado a 6 meses según el modelo predictivo">
-                        <div className="metric-icon">🔮</div>
-                        <div className="metric-label">{t('predictions.sixMonths')}</div>
-                        <div className="metric-value">
-                          {predData.predictions_data?.predictions?.['6_months']?.weight_kg} kg
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="prediction-chart-container">
-                      <Plot
-                        data={[
-                          {
-                            type: 'scatter',
-                            mode: 'lines+markers',
-                            name: t('predictions.prediction'),
-                            x: [t('predictions.actual'), t('predictions.twoWeeks'), t('predictions.oneMonth'), t('predictions.sixMonths')],
-                            y: [
-                              Math.round(predData.profile_snapshot?.weight * 10) / 10,
-                              predData.predictions_data?.predictions?.['2_weeks']?.weight_kg,
-                              predData.predictions_data?.predictions?.['1_month']?.weight_kg,
-                              predData.predictions_data?.predictions?.['6_months']?.weight_kg
-                            ],
-                            marker: { color: '#3b82f6', size: 10 },
-                            line: { color: '#3b82f6', width: 3 }
-                          }
-                        ]}
-                        layout={getChartLayout(t('predictions.projectionChart'), true)}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-                  </div>
-
-                  {timelineData?.has_predictions && (
-                    <div className="prediction-card">
-                      <h3>{t('predictions.actualVsPredicted')}</h3>
-                      {timelineData.actual_progress && timelineData.actual_progress.length > 0 ? (
-                        <Plot
-                          data={[
-                            {
-                              type: 'scatter',
-                              mode: 'lines+markers',
-                              name: t('predictions.prediction'),
-                              x: [t('predictions.start'), t('predictions.twoWeeks'), t('predictions.oneMonth'), t('predictions.sixMonths')],
-                              y: [
-                                Math.round(predData.profile_snapshot?.weight * 10) / 10,
-                                predData.predictions_data?.predictions?.['2_weeks']?.weight_kg,
-                                predData.predictions_data?.predictions?.['1_month']?.weight_kg,
-                                predData.predictions_data?.predictions?.['6_months']?.weight_kg
-                              ],
-                              marker: { color: '#3b82f6', size: 10 },
-                              line: { color: '#3b82f6', width: 2 }
-                            },
-                            {
-                              type: 'scatter',
-                              mode: 'lines+markers',
-                              name: t('predictions.realProgress'),
-                              x: timelineData.actual_progress.map(p => new Date(p.date).toLocaleDateString()),
-                              y: timelineData.actual_progress.map(p => p.weight_kg),
-                              marker: { color: '#10b981', size: 10 },
-                              line: { color: '#10b981', width: 2 }
-                            }
-                          ]}
-                          layout={getChartLayout(t('predictions.comparisonChart'), true)}
-                          style={{ width: '100%' }}
-                        />
-                      ) : (
-                        <div className="empty-state prediction-empty">
-                          <p>{t('predictions.noProgress')}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {statsData?.has_stats && (
-                    <div className="grid-2">
-                      <div className="card">
-                        <h3>{t('predictions.accuracyStats')}</h3>
-                        <div className="prediction-stat-center">
-                          <div className="prediction-accuracy-value">
-                            {statsData.average_accuracy}%
-                          </div>
-                          <div className="prediction-accuracy-label">{t('predictions.avgAccuracy')}</div>
-                        </div>
-                      </div>
-                      <div className="card">
-                        <h3>{t('predictions.predictionHistory')}</h3>
-                        {statsData.details?.map((stat, i) => (
-                          <div key={i} className="goal-item">
-                            <div>
-                              <div className="prediction-stat-value">
-                                {new Date(stat.date).toLocaleDateString()}
-                              </div>
-                              {stat.accuracy?.['2_weeks'] && (
-                                <div className="prediction-stat-detail">
-                                  {t('predictions.twoWeeks')}: {stat.accuracy['2_weeks'].accuracy_pct}%
-                                </div>
-                              )}
-                              {stat.accuracy?.['1_month'] && (
-                                <div className="prediction-stat-detail">
-                                  {t('predictions.oneMonth')}: {stat.accuracy['1_month'].accuracy_pct}%
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <div className="empty-state-icon">📈</div>
-                  <h3>{t('predictions.emptyTitle')}</h3>
-                  <p>{t('predictions.emptyDesc')}</p>
-                </div>
-              );
-            })()}
-
-                  </div>
-                )}
-
                 {activeTab === 'explainability' && (
                   <div className="tab-content-inner">
                     <ExplainabilityCenter
