@@ -606,7 +606,7 @@ body {
 
 .profile-section {
   background: var(--surface);
-  padding: 28px;
+  padding: 20px;
   border-radius: var(--radius-2xl);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-md);
@@ -616,8 +616,8 @@ body {
 }
 
 .profile-section h3 {
-  font-size: 1.4rem;
-  margin-bottom: 24px;
+  font-size: 1.2rem;
+  margin-bottom: 20px;
   color: var(--text);
   font-weight: 700;
   display: flex;
@@ -876,8 +876,8 @@ body {
 
 .analysis-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  gap: 20px;
   margin-bottom: 32px;
   align-items: start;
   width: 100%;
@@ -896,15 +896,15 @@ body {
 .analysis-top-cards {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
 .analysis-card {
   background: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
-  padding: 24px 20px;
+  padding: 18px 16px;
   text-align: center;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   position: relative;
@@ -975,23 +975,23 @@ body {
 
 .analysis-card-label {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .analysis-card-value {
-  font-size: 2.2rem;
+  font-size: 1.8rem;
   font-weight: 800;
   line-height: 1.1;
 }
 
 .analysis-card-desc {
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .analysis-card.score .analysis-card-value {
@@ -1013,14 +1013,14 @@ body {
 .analysis-panels {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: 12px;
 }
 
 .analysis-panel {
   background: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
-  padding: 22px;
+  padding: 18px;
   height: 100%;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
@@ -1080,8 +1080,8 @@ body {
 .analysis-charts {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-top: 24px;
+  gap: 12px;
+  margin-top: 20px;
 }
 
 .analysis-chart-card {
@@ -1121,8 +1121,8 @@ body {
 .metrics-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
 }
 
 .metric-card {
@@ -1173,9 +1173,9 @@ body {
 
 .grid-2 {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
-  gap: 28px;
-  margin-bottom: 36px;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 /* ============================================
@@ -1184,15 +1184,15 @@ body {
 
 .card {
   background: var(--surface);
-  padding: 28px;
+  padding: 20px;
   border-radius: var(--radius-2xl);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-md);
 }
 
 .card h3 {
-  font-size: 1.4rem;
-  margin-bottom: 24px;
+  font-size: 1.2rem;
+  margin-bottom: 16px;
   color: var(--text);
   font-weight: 700;
   display: flex;
@@ -1398,6 +1398,56 @@ body {
 /* ============================================
    EXERCISE SECTION
    ============================================ */
+
+.exercise-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.exercise-kpi-card {
+  background: var(--surface);
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.exercise-kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+.exercise-kpi-icon {
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+.exercise-kpi-label {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  margin-bottom: 6px;
+}
+
+.exercise-kpi-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.card-subtitle {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+  margin-top: -16px;
+}
 
 .exercise-grid {
   display: grid;
@@ -1840,6 +1890,18 @@ body {
     gap: 20px;
   }
 
+  .exercise-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .kpi-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .clinical-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
   .analysis-results {
     position: static;
   }
@@ -2008,6 +2070,19 @@ body {
   }
 
   .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .exercise-kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .kpi-panel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .clinical-metrics-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2625,13 +2700,274 @@ html.dark .empty-state p {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 20px;
+  padding: 16px;
 }
 
 .report-summary-card h3 {
   margin: 0 0 14px;
   font-size: 15px;
   color: var(--text);
+}
+
+/* ============================================
+   EXECUTIVE KPI PANEL
+   ============================================ */
+
+.executive-kpi-panel {
+  background: linear-gradient(135deg, var(--surface), var(--surface-light));
+  border: 2px solid var(--primary-border);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.kpi-panel-item {
+  background: var(--surface);
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.kpi-panel-item:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary);
+}
+
+.kpi-panel-icon {
+  font-size: 1.5rem;
+  margin-bottom: 6px;
+}
+
+.kpi-panel-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.kpi-panel-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.kpi-panel-suffix {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.kpi-panel-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.kpi-panel-section-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.kpi-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kpi-panel-list-item {
+  padding: 10px 14px;
+  background: var(--surface-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--text);
+  line-height: 1.4;
+  border-left: 3px solid var(--primary);
+}
+
+/* ============================================
+   CLINICAL SUMMARY CARD
+   ============================================ */
+
+.clinical-summary-card {
+  border-left: 4px solid var(--info);
+}
+
+.clinical-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.clinical-metric-item {
+  background: var(--surface-light);
+  padding: 14px;
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.clinical-metric-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.clinical-metric-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.clinical-metric-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.clinical-recommendations {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.clinical-section-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.clinical-recommendations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.clinical-recommendation-item {
+  padding: 10px 14px;
+  background: var(--success-bg);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--success-text);
+  line-height: 1.4;
+  border-left: 3px solid var(--secondary);
+}
+
+/* ============================================
+   AI SUMMARY CARD
+   ============================================ */
+
+.ai-summary-card {
+  border-left: 4px solid var(--purple);
+  background: linear-gradient(135deg, var(--surface), rgba(155, 89, 182, 0.05));
+}
+
+.ai-explanation-box {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  background: var(--primary-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--primary-border);
+  margin-bottom: 16px;
+}
+
+.ai-explanation-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.ai-explanation-text {
+  flex: 1;
+}
+
+.ai-explanation-main {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.ai-model-info {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ai-model-badge {
+  padding: 6px 12px;
+  background: var(--purple);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.ai-confidence-badge {
+  padding: 6px 12px;
+  background: var(--success-bg);
+  color: var(--success-text);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ai-factors-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.ai-factors-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+.ai-factors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-factor-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--surface-light);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+
+.ai-factor-name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.ai-factor-impact {
+  color: var(--text-muted);
+  font-weight: 700;
 }
 
 .report-summary-ai {

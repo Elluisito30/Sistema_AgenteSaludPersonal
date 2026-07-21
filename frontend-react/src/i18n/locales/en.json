@@ -93,6 +93,15 @@
     "energyBoost": "⚡ Energy Boost",
     "generalWellness": "🌟 General Wellness"
   },
+  "weeklyGoals": {
+    "goal_normal_weight": "Maintain healthy weight",
+    "goal_muscle_gain": "Gain muscle mass",
+    "goal_weight_loss": "Lose weight",
+    "goal_better_sleep": "Improve sleep quality",
+    "goal_stress_reduction": "Reduce stress levels",
+    "goal_energy_boost": "Increase energy levels",
+    "goal_general_wellness": "Improve general wellness"
+  },
   "messages": {
     "profileSaved": "✅ Profile updated successfully",
     "analyzing": "Analyzing your health with AI...",

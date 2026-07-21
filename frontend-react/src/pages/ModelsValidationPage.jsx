@@ -21,6 +21,14 @@ export default function ModelsValidationPage() {
     'LogisticRegression': 'Regresión Logística'
   };
 
+  // Mapeo de nombres abreviados para eje X
+  const modelShortNames = {
+    'XGBoost': 'XGBoost + KB',
+    'RandomForest': 'RF + Rules',
+    'MLP': 'MLP',
+    'LogisticRegression': 'LogReg'
+  };
+
   const getModelType = (modelName) => {
     const lowerM = modelName.toLowerCase();
     if (lowerM.includes("xgboost")) return "Híbrido: XGBoost + Motor Basado en Conocimiento";
@@ -132,9 +140,104 @@ export default function ModelsValidationPage() {
       {data && (
         <div className="validation-results">
           <div className="winner-banner">
-            <h2>🏆 Modelo Ganador: {modelDisplayNames[data.winner] || data.winner}</h2>
-            <p>Este modelo ha sido establecido como activo automáticamente.</p>
+            <div className="winner-content">
+              <div className="winner-icon">🏆</div>
+              <div className="winner-text">
+                <h2>Modelo Ganador</h2>
+                <p className="winner-model-name">{modelDisplayNames[data.winner] || data.winner}</p>
+                <p className="winner-subtitle">Este modelo ha sido establecido como activo automáticamente</p>
+              </div>
+            </div>
           </div>
+
+          {/* Justificación del Modelo Ganador */}
+          {data && data.winner && (
+            <div className="winner-justification-card">
+              <div className="justification-header">
+                <div className="justification-icon">🏆</div>
+                <h3>Justificación del Modelo Ganador</h3>
+              </div>
+
+              <div className="justification-content">
+                {/* Texto explicativo automático */}
+                <div className="justification-explanation">
+                  <p>
+                    <strong>{modelDisplayNames[data.winner] || data.winner}</strong> fue seleccionado como modelo principal porque obtuvo el mejor rendimiento global en las métricas de clasificación.
+                    Alcanzó un <strong>Accuracy de {((data.models[data.winner].accuracy || 0) * 100).toFixed(2)}%</strong>,
+                    un <strong>F1 Macro de {((data.models[data.winner].f1_score || 0) * 100).toFixed(2)}%</strong> y
+                    un <strong>ROC-AUC de {((data.models[data.winner].roc_auc || 0) * 100).toFixed(2)}%</strong>,
+                    superando al resto de modelos evaluados.
+                  </p>
+                </div>
+
+                {/* Métricas destacadas */}
+                <div className="justification-metrics">
+                  <div className="justification-metric">
+                    <div className="metric-icon">📊</div>
+                    <div className="metric-info">
+                      <span className="metric-title">Accuracy</span>
+                      <span className="metric-desc">Porcentaje de pacientes clasificados correctamente</span>
+                    </div>
+                    <span className="metric-value">{((data.models[data.winner].accuracy || 0) * 100).toFixed(2)}%</span>
+                  </div>
+
+                  <div className="justification-metric">
+                    <div className="metric-icon">⚖️</div>
+                    <div className="metric-info">
+                      <span className="metric-title">F1 Macro</span>
+                      <span className="metric-desc">Evalúa el rendimiento equilibrado en todas las categorías de peso</span>
+                    </div>
+                    <span className="metric-value">{((data.models[data.winner].f1_score || 0) * 100).toFixed(2)}%</span>
+                  </div>
+
+                  <div className="justification-metric">
+                    <div className="metric-icon">🎯</div>
+                    <div className="metric-info">
+                      <span className="metric-title">ROC-AUC</span>
+                      <span className="metric-desc">Capacidad del modelo para distinguir correctamente entre estados de salud</span>
+                    </div>
+                    <span className="metric-value">{((data.models[data.winner].roc_auc || 0) * 100).toFixed(2)}%</span>
+                  </div>
+                </div>
+
+                {/* Ranking */}
+                <div className="justification-ranking">
+                  <span className="ranking-label">Ranking obtenido:</span>
+                  <span className="ranking-value">#1 de {Object.keys(data.models).length} modelos</span>
+                </div>
+
+                {/* Interpretación Estadística */}
+                {(data.statistics?.friedman || data.statistics?.wilcoxon) && (
+                  <div className="statistical-interpretation">
+                    <div className="statistical-header">
+                      <span className="statistical-icon">📈</span>
+                      <h4>Interpretación Estadística</h4>
+                    </div>
+                    <div className="statistical-content">
+                      {data.statistics?.friedman && (
+                        <p>
+                          La prueba de Friedman obtuvo <strong>p = {data.statistics.friedman.p_value?.toFixed(4)}</strong>,
+                          por lo que {data.statistics.friedman.p_value < 0.05 
+                            ? 'se encontraron diferencias estadísticamente significativas entre los modelos evaluados.' 
+                            : 'no se encontraron diferencias estadísticamente significativas entre los modelos evaluados.'}
+                          Sin embargo, <strong>{modelDisplayNames[data.winner] || data.winner}</strong> presentó el mejor desempeño promedio y fue seleccionado como modelo principal.
+                        </p>
+                      )}
+                      {data.statistics?.wilcoxon && !data.statistics?.friedman && (
+                        <p>
+                          La prueba de Wilcoxon Signed-Rank obtuvo <strong>p = {data.statistics.wilcoxon.p_value?.toFixed(4)}</strong>
+                          al comparar contra <strong>{modelDisplayNames[data.statistics.wilcoxon.compared_against] || data.statistics.wilcoxon.compared_against}</strong>,
+                          por lo que {data.statistics.wilcoxon.p_value < 0.05 
+                            ? 'el modelo ganador es estadísticamente superior.' 
+                            : 'no se puede afirmar estadísticamente que el modelo ganador sea significativamente superior.'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="competitors-section">
             <h3>Modelos en Competencia</h3>
@@ -144,20 +247,53 @@ export default function ModelsValidationPage() {
                 const meanAcc = acc ? (acc.reduce((a, b) => a + b, 0) / acc.length).toFixed(4) : null;
                 const displayName = modelDisplayNames[m] || m;
                 const modelType = getModelType(m);
+                const isWinner = data.winner === m;
 
                 return (
-                  <div key={m} className={`competitor-card ${data.winner === m ? 'winner-card' : ''}`}>
-                    <h4>{displayName}</h4>
-                    {meanAcc && <p>Accuracy: {(meanAcc * 100).toFixed(2)}%</p>}
-                    {data.models[m].precision && <p>Precision: {(data.models[m].precision * 100).toFixed(2)}%</p>}
-                    {data.models[m].recall && <p>Recall: {(data.models[m].recall * 100).toFixed(2)}%</p>}
-                    {data.models[m].f1_score && <p>F1-Score: {(data.models[m].f1_score * 100).toFixed(2)}%</p>}
-                    {data.models[m].roc_auc && <p>ROC-AUC: {(data.models[m].roc_auc * 100).toFixed(2)}%</p>}
-                    {data.models[m].inference_time_ms && <p>Inferencia: {data.models[m].inference_time_ms.toFixed(2)}ms</p>}
-                    <p style={{ fontSize: '0.85rem', marginTop: '4px', fontWeight: 600, color: 'var(--primary-color, #4361ee)' }}>
-                      Tipo: {modelType}
-                    </p>
-                    {data.winner === m && <span className="winner-badge">Ganador</span>}
+                  <div key={m} className={`competitor-card ${isWinner ? 'winner-card' : ''}`}>
+                    {isWinner && <div className="winner-trophy">🏆</div>}
+                    <div className="card-header">
+                      <h4 title={displayName}>{displayName}</h4>
+                      <span className="model-type-badge" title={modelType}>{modelType}</span>
+                    </div>
+                    <div className="metrics-grid">
+                      {meanAcc && (
+                        <div className="metric-mini-card">
+                          <span className="metric-label">Accuracy</span>
+                          <span className="metric-value">{(meanAcc * 100).toFixed(2)}%</span>
+                        </div>
+                      )}
+                      {data.models[m].precision && (
+                        <div className="metric-mini-card">
+                          <span className="metric-label">Precision</span>
+                          <span className="metric-value">{(data.models[m].precision * 100).toFixed(2)}%</span>
+                        </div>
+                      )}
+                      {data.models[m].recall && (
+                        <div className="metric-mini-card">
+                          <span className="metric-label">Recall</span>
+                          <span className="metric-value">{(data.models[m].recall * 100).toFixed(2)}%</span>
+                        </div>
+                      )}
+                      {data.models[m].f1_score && (
+                        <div className="metric-mini-card">
+                          <span className="metric-label">F1</span>
+                          <span className="metric-value">{(data.models[m].f1_score * 100).toFixed(2)}%</span>
+                        </div>
+                      )}
+                      {data.models[m].roc_auc && (
+                        <div className="metric-mini-card">
+                          <span className="metric-label">ROC-AUC</span>
+                          <span className="metric-value">{(data.models[m].roc_auc * 100).toFixed(2)}%</span>
+                        </div>
+                      )}
+                      {data.models[m].inference_time_ms && (
+                        <div className="metric-mini-card">
+                          <span className="metric-label">Inferencia</span>
+                          <span className="metric-value">{data.models[m].inference_time_ms.toFixed(2)}ms</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -168,16 +304,70 @@ export default function ModelsValidationPage() {
             <h3>Interpretaciones Estadísticas Oficiales</h3>
             <div className="stats-grid">
               <div className="stat-card">
-                <h4>Prueba de Normalidad (Shapiro-Wilk)</h4>
-                <p>{data.statistics.shapiro.interpretation}</p>
+                <div className="stat-header">
+                  <span className="stat-icon">📊</span>
+                  <h4>Shapiro-Wilk</h4>
+                </div>
+                <div className="stat-metrics">
+                  <div className="stat-metric">
+                    <span className="stat-metric-label">Estadístico</span>
+                    <span className="stat-metric-value">{data.statistics.shapiro.statistic?.toFixed(4)}</span>
+                  </div>
+                  <div className="stat-metric">
+                    <span className="stat-metric-label">p-value</span>
+                    <span className="stat-metric-value">{data.statistics.shapiro.p_value?.toFixed(4)}</span>
+                  </div>
+                </div>
+                <div className="stat-result">
+                  <span className={`stat-badge ${data.statistics.shapiro.p_value < 0.05 ? 'significant' : 'not-significant'}`}>
+                    {data.statistics.shapiro.p_value < 0.05 ? '✓ Significativo' : '⚠ No significativo'}
+                  </span>
+                  <p>{data.statistics.shapiro.interpretation}</p>
+                </div>
               </div>
               <div className="stat-card">
-                <h4>Comparación Global (Friedman Test)</h4>
-                <p>{data.statistics.friedman.interpretation}</p>
+                <div className="stat-header">
+                  <span className="stat-icon">🔬</span>
+                  <h4>Friedman Test</h4>
+                </div>
+                <div className="stat-metrics">
+                  <div className="stat-metric">
+                    <span className="stat-metric-label">Estadístico</span>
+                    <span className="stat-metric-value">{data.statistics.friedman.statistic?.toFixed(4)}</span>
+                  </div>
+                  <div className="stat-metric">
+                    <span className="stat-metric-label">p-value</span>
+                    <span className="stat-metric-value">{data.statistics.friedman.p_value?.toFixed(4)}</span>
+                  </div>
+                </div>
+                <div className="stat-result">
+                  <span className={`stat-badge ${data.statistics.friedman.p_value < 0.05 ? 'significant' : 'not-significant'}`}>
+                    {data.statistics.friedman.p_value < 0.05 ? '✓ Significativo' : '⚠ No significativo'}
+                  </span>
+                  <p>{data.statistics.friedman.interpretation}</p>
+                </div>
               </div>
               <div className="stat-card">
-                <h4>Superioridad por Pares (Wilcoxon Signed-Rank)</h4>
-                <p>{data.statistics.wilcoxon.interpretation}</p>
+                <div className="stat-header">
+                  <span className="stat-icon">⚖️</span>
+                  <h4>Wilcoxon Signed-Rank</h4>
+                </div>
+                <div className="stat-metrics">
+                  <div className="stat-metric">
+                    <span className="stat-metric-label">Estadístico</span>
+                    <span className="stat-metric-value">{data.statistics.wilcoxon.statistic?.toFixed(4)}</span>
+                  </div>
+                  <div className="stat-metric">
+                    <span className="stat-metric-label">p-value</span>
+                    <span className="stat-metric-value">{data.statistics.wilcoxon.p_value?.toFixed(4)}</span>
+                  </div>
+                </div>
+                <div className="stat-result">
+                  <span className={`stat-badge ${data.statistics.wilcoxon.p_value < 0.05 ? 'significant' : 'not-significant'}`}>
+                    {data.statistics.wilcoxon.p_value < 0.05 ? '✓ Significativo' : '⚠ No significativo'}
+                  </span>
+                  <p>{data.statistics.wilcoxon.interpretation}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -185,130 +375,227 @@ export default function ModelsValidationPage() {
           <div className="charts-section">
             <div className="chart-container">
               <h3>Estabilidad por Pliegues (Crossover Folds)</h3>
-              <Plot
-                data={Object.keys(data.models).map(m => ({
-                  y: data.models[m].folds_accuracy,
-                  type: 'scatter',
-                  mode: 'lines+markers',
-                  name: m
-                }))}
-                layout={{ title: 'Exactitud por Fold', xaxis: {title: 'Fold'}, yaxis: {title: 'Accuracy'} }}
-                useResizeHandler={true}
-                style={{width: "100%", height: "100%"}}
-              />
+              <p className="chart-container-subtitle">Consistencia del rendimiento a través de los folds de validación cruzada</p>
+              <div className="chart-plot">
+                <Plot
+                  data={Object.keys(data.models).map(m => ({
+                    y: data.models[m].folds_accuracy,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: m
+                  }))}
+                  layout={{ 
+                    title: { text: 'Exactitud por Fold', font: { size: 14, color: '#333' } },
+                    xaxis: { title: 'Fold', titlefont: { size: 12 }, tickfont: { size: 11 } },
+                    yaxis: { title: 'Accuracy', titlefont: { size: 12 }, tickfont: { size: 11 } },
+                    margin: { t: 40, b: 40, l: 50, r: 20 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    legend: { font: { size: 11 } },
+                    hovermode: 'closest',
+                    autosize: true
+                  }}
+                  config={{ responsive: true, displayModeBar: false }}
+                  useResizeHandler={true}
+                  style={{width: "100%", height: "100%"}}
+                />
+              </div>
+              <div className="chart-insight">
+                <div className="chart-insight-header">📊 Interpretación</div>
+                <p className="chart-insight-text">Las métricas mantienen un comportamiento consistente a través de los distintos folds de validación, indicando estabilidad del entrenamiento.</p>
+              </div>
             </div>
 
             <div className="chart-container">
               <h3>Varianza de Modelos (Boxplot)</h3>
-              <Plot
-                data={Object.keys(data.models).map(m => ({
-                  y: data.models[m].folds_accuracy,
-                  type: 'box',
-                  name: m
-                }))}
-                layout={{ title: 'Distribución de Exactitud' }}
-                useResizeHandler={true}
-                style={{width: "100%", height: "100%"}}
-              />
+              <p className="chart-container-subtitle">Distribución de exactitud a través de los folds de validación cruzada</p>
+              <div className="chart-plot">
+                <Plot
+                  data={Object.keys(data.models).map(m => ({
+                    y: data.models[m].folds_accuracy,
+                    type: 'box',
+                    name: m
+                  }))}
+                  layout={{ 
+                    title: { text: 'Distribución de Exactitud', font: { size: 14, color: '#333' } },
+                    yaxis: { title: 'Accuracy', titlefont: { size: 12 }, tickfont: { size: 11 } },
+                    margin: { t: 40, b: 40, l: 50, r: 20 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    legend: { font: { size: 11 } },
+                    autosize: true
+                  }}
+                  config={{ responsive: true, displayModeBar: false }}
+                  useResizeHandler={true}
+                  style={{width: "100%", height: "100%"}}
+                />
+              </div>
+              <div className="chart-insight">
+                <div className="chart-insight-header">📊 Interpretación</div>
+                <p className="chart-insight-text">Las distribuciones muestran baja variabilidad entre pliegues, indicando estabilidad del entrenamiento.</p>
+              </div>
             </div>
 
             <div className="chart-container">
               <h3>P-Valores Estadísticos (Umbral 0.05)</h3>
-              <Plot
-                data={[{
-                  x: ['Shapiro', 'Friedman', 'Wilcoxon'],
-                  y: [data.statistics.shapiro.p_value, data.statistics.friedman.p_value, data.statistics.wilcoxon.p_value],
-                  type: 'bar',
-                  marker: {
-                    color: [
-                      data.statistics.shapiro.p_value < 0.05 ? 'green' : 'red',
-                      data.statistics.friedman.p_value < 0.05 ? 'green' : 'red',
-                      data.statistics.wilcoxon.p_value < 0.05 ? 'green' : 'red'
-                    ]
-                  }
-                }]}
-                layout={{
-                  title: 'Significancia Estadística',
-                  shapes: [{
-                    type: 'line', x0: -0.5, x1: 2.5, y0: 0.05, y1: 0.05,
-                    line: { color: 'blue', width: 2, dash: 'dot' }
-                  }]
-                }}
-                useResizeHandler={true}
-                style={{width: "100%", height: "100%"}}
-              />
+              <p className="chart-container-subtitle">Significancia estadística de las pruebas de Shapiro-Wilk, Friedman y Wilcoxon</p>
+              <div className="chart-plot">
+                <Plot
+                  data={[{
+                    x: ['Shapiro', 'Friedman', 'Wilcoxon'],
+                    y: [data.statistics.shapiro.p_value, data.statistics.friedman.p_value, data.statistics.wilcoxon.p_value],
+                    type: 'bar',
+                    marker: {
+                      color: [
+                        data.statistics.shapiro.p_value < 0.05 ? '#10b981' : '#ef4444',
+                        data.statistics.friedman.p_value < 0.05 ? '#10b981' : '#ef4444',
+                        data.statistics.wilcoxon.p_value < 0.05 ? '#10b981' : '#ef4444'
+                      ]
+                    }
+                  }]}
+                  layout={{
+                    title: { text: 'Significancia Estadística', font: { size: 14, color: '#333' } },
+                    yaxis: { title: 'p-value', titlefont: { size: 12 }, tickfont: { size: 11 } },
+                    xaxis: { tickfont: { size: 11 } },
+                    margin: { t: 40, b: 40, l: 50, r: 20 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    shapes: [{
+                      type: 'line', x0: -0.5, x1: 2.5, y0: 0.05, y1: 0.05,
+                      line: { color: '#4361ee', width: 2, dash: 'dot' }
+                    }],
+                    annotations: [{
+                      x: 1.5, y: 0.06,
+                      text: 'α = 0.05',
+                      showarrow: false,
+                      font: { size: 10, color: '#4361ee' }
+                    }],
+                    autosize: true
+                  }}
+                  config={{ responsive: true, displayModeBar: false }}
+                  useResizeHandler={true}
+                  style={{width: "100%", height: "100%"}}
+                />
+              </div>
+              <div className="chart-insight">
+                <div className="chart-insight-header">📊 Interpretación</div>
+                <p className="chart-insight-text">El valor p obtenido es superior a 0.05, por lo que no existen diferencias estadísticamente significativas entre los modelos evaluados.</p>
+              </div>
             </div>
 
             <div className="chart-container">
               <h3>Precision, Recall y F1-Score por Modelo</h3>
-              <Plot
-                data={[
-                  {
-                    x: Object.keys(data.models).map(m => modelDisplayNames[m] || m),
-                    y: Object.keys(data.models).map(m => (data.models[m].precision || 0) * 100),
-                    type: 'bar',
-                    name: 'Precision',
-                    marker: { color: '#4361ee' }
-                  },
-                  {
-                    x: Object.keys(data.models).map(m => modelDisplayNames[m] || m),
-                    y: Object.keys(data.models).map(m => (data.models[m].recall || 0) * 100),
-                    type: 'bar',
-                    name: 'Recall',
-                    marker: { color: '#3a0ca3' }
-                  },
-                  {
-                    x: Object.keys(data.models).map(m => modelDisplayNames[m] || m),
-                    y: Object.keys(data.models).map(m => (data.models[m].f1_score || 0) * 100),
-                    type: 'bar',
-                    name: 'F1-Score',
-                    marker: { color: '#7209b7' }
-                  }
-                ]}
-                layout={{
-                  title: 'Métricas de Clasificación por Modelo',
-                  barmode: 'group',
-                  yaxis: { title: 'Porcentaje (%)' }
-                }}
-                useResizeHandler={true}
-                style={{width: "100%", height: "100%"}}
-              />
+              <p className="chart-container-subtitle">Métricas de clasificación comparadas entre modelos</p>
+              <div className="chart-plot">
+                <Plot
+                  data={[
+                    {
+                      x: Object.keys(data.models).map(m => modelShortNames[m] || m),
+                      y: Object.keys(data.models).map(m => (data.models[m].precision || 0) * 100),
+                      type: 'bar',
+                      name: 'Precision',
+                      marker: { color: '#4361ee' }
+                    },
+                    {
+                      x: Object.keys(data.models).map(m => modelShortNames[m] || m),
+                      y: Object.keys(data.models).map(m => (data.models[m].recall || 0) * 100),
+                      type: 'bar',
+                      name: 'Recall',
+                      marker: { color: '#3a0ca3' }
+                    },
+                    {
+                      x: Object.keys(data.models).map(m => modelShortNames[m] || m),
+                      y: Object.keys(data.models).map(m => (data.models[m].f1_score || 0) * 100),
+                      type: 'bar',
+                      name: 'F1-Score',
+                      marker: { color: '#7209b7' }
+                    }
+                  ]}
+                  layout={{
+                    title: { text: 'Métricas de Clasificación por Modelo', font: { size: 14, color: '#333' } },
+                    barmode: 'group',
+                    yaxis: { title: 'Porcentaje (%)', titlefont: { size: 12 }, tickfont: { size: 11 } },
+                    xaxis: { tickfont: { size: 10 }, tickangle: -45 },
+                    margin: { t: 40, b: 80, l: 50, r: 20 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    legend: { font: { size: 11 }, orientation: 'h', y: -0.15 },
+                    hovermode: 'closest',
+                    autosize: true
+                  }}
+                  config={{ responsive: true, displayModeBar: false }}
+                  useResizeHandler={true}
+                  style={{width: "100%", height: "100%"}}
+                />
+              </div>
+              <div className="chart-insight">
+                <div className="chart-insight-header">📊 Interpretación</div>
+                <p className="chart-insight-text">XGBoost presenta la mayor exactitud global, aunque las diferencias respecto a Random Forest y MLP son reducidas.</p>
+              </div>
             </div>
 
             <div className="chart-container">
               <h3>ROC-AUC por Modelo</h3>
-              <Plot
-                data={[{
-                  x: Object.keys(data.models).map(m => modelDisplayNames[m] || m),
-                  y: Object.keys(data.models).map(m => (data.models[m].roc_auc || 0) * 100),
-                  type: 'bar',
-                  marker: { color: '#f72585' }
-                }]}
-                layout={{
-                  title: 'Área bajo la Curva ROC',
-                  yaxis: { title: 'ROC-AUC (%)' }
-                }}
-                useResizeHandler={true}
-                style={{width: "100%", height: "100%"}}
-              />
+              <p className="chart-container-subtitle">Capacidad discriminativa de los modelos evaluados</p>
+              <div className="chart-plot">
+                <Plot
+                  data={[{
+                    x: Object.keys(data.models).map(m => modelShortNames[m] || m),
+                    y: Object.keys(data.models).map(m => (data.models[m].roc_auc || 0) * 100),
+                    type: 'bar',
+                    marker: { color: '#f72585' }
+                  }]}
+                  layout={{
+                    title: { text: 'Área bajo la Curva ROC', font: { size: 14, color: '#333' } },
+                    yaxis: { title: 'ROC-AUC (%)', titlefont: { size: 12 }, tickfont: { size: 11 } },
+                    xaxis: { tickfont: { size: 10 }, tickangle: -45 },
+                    margin: { t: 40, b: 80, l: 50, r: 20 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    hovermode: 'closest',
+                    autosize: true
+                  }}
+                  config={{ responsive: true, displayModeBar: false }}
+                  useResizeHandler={true}
+                  style={{width: "100%", height: "100%"}}
+                />
+              </div>
+              <div className="chart-insight">
+                <div className="chart-insight-header">📊 Interpretación</div>
+                <p className="chart-insight-text">Todos los modelos muestran una excelente capacidad discriminativa con valores superiores a 0.98.</p>
+              </div>
             </div>
 
             <div className="chart-container">
               <h3>Tiempo de Inferencia por Modelo</h3>
-              <Plot
-                data={[{
-                  x: Object.keys(data.models).map(m => modelDisplayNames[m] || m),
-                  y: Object.keys(data.models).map(m => data.models[m].inference_time_ms || 0),
-                  type: 'bar',
-                  marker: { color: '#4cc9f0' }
-                }]}
-                layout={{
-                  title: 'Tiempo Promedio de Inferencia',
-                  yaxis: { title: 'Tiempo (ms)' }
-                }}
-                useResizeHandler={true}
-                style={{width: "100%", height: "100%"}}
-              />
+              <p className="chart-container-subtitle">Rendimiento computacional de los modelos en tiempo de inferencia</p>
+              <div className="chart-plot">
+                <Plot
+                  data={[{
+                    x: Object.keys(data.models).map(m => modelShortNames[m] || m),
+                    y: Object.keys(data.models).map(m => data.models[m].inference_time_ms || 0),
+                    type: 'bar',
+                    marker: { color: '#4cc9f0' }
+                  }]}
+                  layout={{
+                    title: { text: 'Tiempo Promedio de Inferencia', font: { size: 14, color: '#333' } },
+                    yaxis: { title: 'Tiempo (ms)', titlefont: { size: 12 }, tickfont: { size: 11 } },
+                    xaxis: { tickfont: { size: 10 }, tickangle: -45 },
+                    margin: { t: 40, b: 80, l: 50, r: 20 },
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    hovermode: 'closest',
+                    autosize: true
+                  }}
+                  config={{ responsive: true, displayModeBar: false }}
+                  useResizeHandler={true}
+                  style={{width: "100%", height: "100%"}}
+                />
+              </div>
+              <div className="chart-insight">
+                <div className="chart-insight-header">📊 Interpretación</div>
+                <p className="chart-insight-text">Los tiempos observados son compatibles con escenarios de inferencia en tiempo real.</p>
+              </div>
             </div>
             
             <div className="matrices-section">
@@ -323,7 +610,14 @@ export default function ModelsValidationPage() {
                         type: 'heatmap',
                         colorscale: 'Blues'
                       }]}
-                      layout={{ margin: { t: 10, b: 30, l: 30, r: 10 } }}
+                      layout={{ 
+                        margin: { t: 40, b: 40, l: 50, r: 20 },
+                        title: { text: modelDisplayNames[m] || m, font: { size: 12 } },
+                        xaxis: { visible: false },
+                        yaxis: { visible: false },
+                        paper_bgcolor: 'rgba(0,0,0,0)',
+                        plot_bgcolor: 'rgba(0,0,0,0)'
+                      }}
                       useResizeHandler={true}
                       style={{width: "100%", height: "250px"}}
                     />

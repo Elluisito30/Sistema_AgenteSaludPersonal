@@ -593,6 +593,9 @@ function Dashboard() {
                               let goalText;
                               if (typeof goal === 'object' && goal?.key) {
                                 goalText = t(`weeklyGoals.${goal.key}`, goal.params || {});
+                              } else if (typeof goal === 'string' && goal.startsWith('weeklyGoals.')) {
+                                // Handle backend returning literal translation keys
+                                goalText = t(goal);
                               } else {
                                 goalText = goal;
                               }
@@ -756,37 +759,38 @@ function Dashboard() {
                   <div className="tab-content-inner">
             {analysis?.health_plan?.exercise ? (
               <div>
-                <div className="exercise-grid">
-                  <div className="card exercise-level-card">
-                    <div className="exercise-level-icon">
+                <div className="exercise-kpi-grid">
+                  <div className="exercise-kpi-card">
+                    <div className="exercise-kpi-icon">
                       {analysis.fitness_level === 'beginner' ? '🌱' :
                         analysis.fitness_level === 'advanced' ? '🏆' : '💪'}
                     </div>
-                    <div className="metric-label">{t('exercise.yourLevel')}</div>
-                    <div className="metric-value">{analysis.fitness_level}</div>
+                    <div className="exercise-kpi-label">{t('exercise.yourLevel')}</div>
+                    <div className="exercise-kpi-value">{analysis.fitness_level}</div>
                   </div>
 
-                  <div className="metrics-grid">
-                    <div className="metric-card" title={t('exercise.cardioTooltip')}>
-                      <div className="metric-icon">🏃</div>
-                      <div className="metric-label">{t('exercise.cardio')}</div>
-                      <div className="metric-value">{analysis.health_plan.exercise.cardio}</div>
-                    </div>
-                    <div className="metric-card" title={t('exercise.strengthTooltip')}>
-                      <div className="metric-icon">🏋️</div>
-                      <div className="metric-label">{t('exercise.strength')}</div>
-                      <div className="metric-value">{analysis.health_plan.exercise.strength}</div>
-                    </div>
-                    <div className="metric-card" title={t('exercise.flexTooltip')}>
-                      <div className="metric-icon">🧘</div>
-                      <div className="metric-label">{t('exercise.flexibility')}</div>
-                      <div className="metric-value">{analysis.health_plan.exercise.flexibility}</div>
-                    </div>
+                  <div className="exercise-kpi-card">
+                    <div className="exercise-kpi-icon">🏃</div>
+                    <div className="exercise-kpi-label">{t('exercise.cardio')}</div>
+                    <div className="exercise-kpi-value">{analysis.health_plan.exercise.cardio}</div>
+                  </div>
+
+                  <div className="exercise-kpi-card">
+                    <div className="exercise-kpi-icon">🏋️</div>
+                    <div className="exercise-kpi-label">{t('exercise.strength')}</div>
+                    <div className="exercise-kpi-value">{analysis.health_plan.exercise.strength}</div>
+                  </div>
+
+                  <div className="exercise-kpi-card">
+                    <div className="exercise-kpi-icon">🧘</div>
+                    <div className="exercise-kpi-label">{t('exercise.flexibility')}</div>
+                    <div className="exercise-kpi-value">{analysis.health_plan.exercise.flexibility}</div>
                   </div>
                 </div>
 
                 <div className="card">
                   <h3>{t('exercise.weeklyPlan')}</h3>
+                  <p className="card-subtitle">{t('exercise.weeklyRoutine')}</p>
                   <div className="exercise-chart-container">
                     <Plot
                       data={[
@@ -820,92 +824,113 @@ function Dashboard() {
             {analysis ? (
               <div>
                 <div className="reports-summaries">
-                  <div className="report-summary-card">
+                  <div className="report-summary-card executive-kpi-panel">
                     <h3>📋 {t('reports.executiveSummary')}</h3>
-                    <div className="summary-metrics">
-                      <div className="summary-metric">
-                        <span className="summary-label">{t('analysis.healthScore')}</span>
-                        <span className="summary-value" style={{ color: getScoreColorVar(analysis.health_score) }}>{analysis.health_score}/100</span>
+                    <div className="kpi-panel-grid">
+                      <div className="kpi-panel-item">
+                        <div className="kpi-panel-icon">❤️</div>
+                        <div className="kpi-panel-label">{t('analysis.healthScore')}</div>
+                        <div className="kpi-panel-value" style={{ color: getScoreColorVar(analysis.health_score) }}>{analysis.health_score}</div>
+                        <div className="kpi-panel-suffix">/100</div>
                       </div>
-                      <div className="summary-metric">
-                        <span className="summary-label">{t('analysis.bmi')}</span>
-                        <span className="summary-value">{analysis.bmi}</span>
+                      <div className="kpi-panel-item">
+                        <div className="kpi-panel-icon">⚖️</div>
+                        <div className="kpi-panel-label">{t('analysis.bmi')}</div>
+                        <div className="kpi-panel-value">{analysis.bmi}</div>
                       </div>
-                      <div className="summary-metric">
-                        <span className="summary-label">{t('analysis.tdee')}</span>
-                        <span className="summary-value">{analysis.tdee?.toFixed(0)} kcal</span>
+                      <div className="kpi-panel-item">
+                        <div className="kpi-panel-icon">🔥</div>
+                        <div className="kpi-panel-label">{t('analysis.tdee')}</div>
+                        <div className="kpi-panel-value">{analysis.tdee?.toFixed(0)}</div>
+                        <div className="kpi-panel-suffix">kcal</div>
                       </div>
                     </div>
                     {analysis.alerts?.length > 0 && (
-                      <div className="summary-alerts">
-                        <strong>{t('reports.riskFactors')}:</strong>
-                        <ul>
+                      <div className="kpi-panel-section">
+                        <div className="kpi-panel-section-title">
+                          {analysis.alerts.some(a => a.severity === 'high' || a.severity === 'critical') ? '⚠️' : 'ℹ️'} {t('reports.riskFactors')}
+                        </div>
+                        <div className="kpi-panel-list">
                           {analysis.alerts.slice(0, 3).map((alert, i) => (
-                            <li key={i}>{alert.message || alert}</li>
+                            <div key={i} className="kpi-panel-list-item">{alert.message || alert}</div>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     )}
                     {analysis.weekly_goals?.length > 0 && (
-                      <div className="summary-goals">
-                        <strong>{t('reports.improvements')}:</strong>
-                        <ul>
+                      <div className="kpi-panel-section">
+                        <div className="kpi-panel-section-title">🎯 {t('reports.improvements')}</div>
+                        <div className="kpi-panel-list">
                           {analysis.weekly_goals.slice(0, 3).map((goal, i) => {
                             let goalText;
                             if (typeof goal === 'object' && goal?.key) {
                               goalText = t(`weeklyGoals.${goal.key}`, goal.params || {});
+                            } else if (typeof goal === 'string' && goal.startsWith('weeklyGoals.')) {
+                              // Handle backend returning literal translation keys
+                              goalText = t(goal);
                             } else {
                               goalText = goal;
                             }
-                            return <li key={i}>{goalText}</li>;
+                            return <div key={i} className="kpi-panel-list-item">{goalText}</div>;
                           })}
-                        </ul>
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="report-summary-card">
+                  <div className="report-summary-card clinical-summary-card">
                     <h3>⚕️ {t('reports.clinicalSummary')}</h3>
-                    <div className="summary-metrics">
-                      <div className="summary-metric">
-                        <span className="summary-label">{t('analysis.bmi')}</span>
-                        <span className="summary-value">{analysis.bmi} — {analysis.bmi_category?.replace('_', ' ')}</span>
+                    <div className="clinical-metrics-grid">
+                      <div className="clinical-metric-item">
+                        <div className="clinical-metric-label">{t('analysis.bmi')}</div>
+                        <div className="clinical-metric-value">{analysis.bmi}</div>
+                        <div className="clinical-metric-sub">{analysis.bmi_category?.replace('_', ' ')}</div>
                       </div>
-                      <div className="summary-metric">
-                        <span className="summary-label">{t('analysis.dailyCalories')}</span>
-                        <span className="summary-value">{analysis.health_plan?.nutrition?.daily_calories || 'N/A'} kcal</span>
+                      <div className="clinical-metric-item">
+                        <div className="clinical-metric-label">{t('analysis.dailyCalories')}</div>
+                        <div className="clinical-metric-value">{analysis.health_plan?.nutrition?.daily_calories || 'N/A'}</div>
+                        <div className="clinical-metric-sub">kcal/día</div>
                       </div>
                     </div>
                     {analysis.health_plan?.nutrition?.recommendations?.length > 0 && (
-                      <div className="summary-recommendations">
-                        <strong>{t('reports.improvements')}:</strong>
-                        <ul>
+                      <div className="clinical-recommendations">
+                        <div className="clinical-section-title">💡 {t('reports.improvements')}</div>
+                        <div className="clinical-recommendations-list">
                           {analysis.health_plan.nutrition.recommendations.slice(0, 3).map((rec, i) => (
-                            <li key={i}>{rec}</li>
+                            <div key={i} className="clinical-recommendation-item">✓ {rec}</div>
                           ))}
-                        </ul>
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="report-summary-card report-summary-ai">
+                  <div className="report-summary-card ai-summary-card">
                     <h3>🤖 {t('reports.aiSummary')}</h3>
                     {analysis.xai ? (
                       <div className="ai-summary-content">
-                        <p className="ai-summary-main-reason"><strong>{t('xai.mainReason')}:</strong> {analysis.xai.main_reason}</p>
-                        <p className="ai-summary-risk">{analysis.xai.risk_explanation}</p>
+                        <div className="ai-explanation-box">
+                          <div className="ai-explanation-icon">💡</div>
+                          <div className="ai-explanation-text">
+                            <p className="ai-explanation-main">{analysis.xai.risk_explanation}</p>
+                          </div>
+                        </div>
                         {analysis.ml_prediction && (
-                          <div className="ai-summary-ml">
-                            <span className="ml-badge">{analysis.ml_prediction.model_used}</span>
-                            <span className="ml-confidence-inline">{t('predictions.confidence')}: {analysis.ml_prediction.confidence?.toFixed(1)}%</span>
+                          <div className="ai-model-info">
+                            <span className="ai-model-badge">{analysis.ml_prediction.model_used}</span>
+                            <span className="ai-confidence-badge">Confianza: {analysis.ml_prediction.confidence?.toFixed(1)}%</span>
                           </div>
                         )}
                         {analysis.xai.important_features?.length > 0 && (
-                          <div className="ai-summary-features">
-                            <strong>{t('xai.importantFeatures')}:</strong>
-                            {analysis.xai.important_features.slice(0, 4).map((feat, i) => (
-                              <span key={i} className="ai-feature-tag">{feat.display_name}</span>
-                            ))}
+                          <div className="ai-factors-section">
+                            <div className="ai-factors-title">🔍 Factores más influyentes</div>
+                            <div className="ai-factors-list">
+                              {analysis.xai.important_features.slice(0, 4).map((feat, i) => (
+                                <div key={i} className="ai-factor-item">
+                                  <span className="ai-factor-name">{feat.display_name}</span>
+                                  <span className="ai-factor-impact">{feat.impact > 0 ? '↑' : '↓'}</span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
