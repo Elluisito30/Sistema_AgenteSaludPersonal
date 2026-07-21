@@ -86,7 +86,7 @@ function JourneyPage() {
     );
   }
 
-  // 2) Con perfil, sin análisis → ir a Dashboard a analizar + opción de repetir pasarela
+  // 2) Con perfil, sin análisis → ir a Dashboard a analizar (sin opción de repetir pasarela)
   if (!summary?.has_analysis) {
     return (
       <div className="journey-gate" style={shell}>
@@ -99,9 +99,6 @@ function JourneyPage() {
         </p>
         <button onClick={() => navigate('/dashboard')} style={btnPrimary}>
           {t('journey.goToAnalyze')}
-        </button>
-        <button onClick={() => navigate('/onboarding')} style={btnSecondary}>
-          {t('journey.repeatOnboarding')}
         </button>
       </div>
     );

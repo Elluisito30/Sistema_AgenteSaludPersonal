@@ -55,7 +55,9 @@ CREATE TABLE IF NOT EXISTS health_analyses (
     weekly_goals TEXT[],
     analyzed_at TIMESTAMP DEFAULT NOW(),
     next_checkup DATE,
-    confidence_score DECIMAL(5,2)
+    confidence_score DECIMAL(5,2),
+    ml_prediction JSONB,
+    xai JSONB
 );
 
 CREATE INDEX IF NOT EXISTS idx_analyses_user ON health_analyses(user_id, id DESC);

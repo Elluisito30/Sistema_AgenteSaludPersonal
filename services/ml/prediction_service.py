@@ -48,10 +48,14 @@ class PredictionService:
 
     def _get_models_dir(self):
         docker_path = "/app/models"
-        local_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
-            "eda", "models"
-        )
+        # Subir 4 niveles desde services/ml/prediction_service.py hasta la raíz del proyecto
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        local_path = os.path.join(project_root, "eda", "models")
+        
+        # Si la ruta local no existe, intentar con la ruta del proyecto actual
+        if not os.path.isdir(local_path):
+            local_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "eda", "models")
+        
         if os.path.isdir(docker_path):
             return docker_path
         return local_path

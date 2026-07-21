@@ -107,6 +107,12 @@ function AppLayout() {
               👤 {t('nav.profile')}
             </NavLink>
             <NavLink
+              to="/training"
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            >
+              🔧 Entrenamiento de modelos
+            </NavLink>
+            <NavLink
               to="/models"
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
             >
